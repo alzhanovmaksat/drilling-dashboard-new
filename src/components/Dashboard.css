@@ -1,0 +1,1791 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+}
+
+body {
+  background-color: #f5f7fa;
+  color: #333;
+}
+
+.dashboard {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* Header Styles */
+.dashboard-header {
+  background-color: #1a3e72;
+  color: white;
+  padding: 1rem 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+}
+
+.header-main {
+  display: flex;
+  flex-direction: column;
+}
+
+.header-main h1 {
+  font-size: 1.5rem;
+  margin: 0;
+}
+
+.header-main h2 {
+  font-size: 0.9rem;
+  font-weight: 400;
+  opacity: 0.9;
+  margin-top: 0.25rem;
+}
+
+.well-id {
+  font-family: monospace;
+  font-size: 0.9rem;
+}
+
+.header-info {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+}
+
+.header-stats {
+  display: flex;
+  gap: 1.5rem;
+}
+
+.header-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.stat-label {
+  font-size: 0.8rem;
+  opacity: 0.8;
+}
+
+.stat-value {
+  font-size: 1.1rem;
+  font-weight: 500;
+}
+
+.time-panel {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.current-time {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-size: 0.8rem;
+}
+
+.operation-status {
+  display: flex;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
+  border-radius: 50px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  background-color: rgba(255,255,255,0.15);
+}
+
+.status-indicator {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 0.5rem;
+}
+
+.status-active {
+  background-color: #4caf50;
+}
+
+.status-warning {
+  background-color: #ff9800;
+}
+
+.status-alert {
+  background-color: #f44336;
+}
+
+/* Dashboard Content Layout */
+.dashboard-content {
+  display: grid;
+  grid-template-columns: 1fr 3fr;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* Sidebar / Stand History */
+.sidebar {
+  background-color: white;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-header {
+  padding: 1.25rem;
+  border-bottom: 1px solid #eee;
+  position: sticky;
+  top: 0;
+  background-color: white;
+  z-index: 1;
+}
+
+.sidebar-header h2 {
+  font-size: 1.25rem;
+  margin: 0;
+  color: #1a3e72;
+}
+
+.total-stands {
+  margin-top: 0.25rem;
+  font-size: 0.85rem;
+  color: #666;
+}
+
+.no-data {
+  padding: 1.25rem;
+  color: #666;
+  font-style: italic;
+}
+
+.stand-list {
+  list-style: none;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.stand-item {
+  padding: 1.25rem;
+  border-bottom: 1px solid #eee;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  position: relative;
+}
+
+.stand-item:hover {
+  background-color: #f0f5ff;
+}
+
+.stand-item.active {
+  background-color: #e6f0ff;
+  border-left: 4px solid #1a3e72;
+}
+
+.stand-item.drilling {
+  border-left: 3px solid #4caf50;
+}
+
+.stand-item.other {
+  border-left: 3px solid #ff9800;
+}
+
+.stand-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.stand-title {
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.stand-time {
+  font-size: 0.8rem;
+  color: #666;
+}
+
+.stand-details {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  font-size: 0.85rem;
+}
+
+.stand-detail {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.stand-detail-label {
+  color: #666;
+}
+
+.stand-detail-value {
+  font-weight: 500;
+}
+
+.stand-indicators {
+  position: absolute;
+  top: 1.25rem;
+  right: 0.75rem;
+  display: flex;
+  gap: 0.25rem;
+}
+
+.indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+}
+
+.high-performance {
+  color: #4caf50;
+}
+
+.high-wob {
+  color: #ff9800;
+}
+
+.low-performance {
+  color: #f44336;
+}
+
+.long-section {
+  color: #9c27b0;
+}
+
+/* Main Content Area */
+.main-content {
+  display: grid;
+  grid-template-rows: 1fr 1fr;
+  gap: 1rem;
+  padding: 1rem;
+  overflow-y: auto;
+}
+
+/* Parameters Panel */
+.parameters-panel {
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.panel-header h3 {
+  color: #1a3e72;
+  font-size: 1.1rem;
+  margin: 0;
+}
+
+.parameter-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.parameter-card {
+  padding: 1rem;
+  border-radius: 6px;
+  background-color: #f9f9f9;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  transition: transform 0.2s;
+}
+
+.parameter-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+}
+
+.parameter-value {
+  font-size: 1.75rem;
+  font-weight: 600;
+  margin: 0.5rem 0;
+  color: #1a3e72;
+}
+
+.parameter-label {
+  font-size: 0.85rem;
+  color: #666;
+}
+
+.parameter-unit {
+  font-size: 0.75rem;
+  color: #999;
+}
+
+.efficiency-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+.efficiency-metric {
+  background-color: #f9f9f9;
+  padding: 1rem;
+  border-radius: 6px;
+}
+
+.metric-label {
+  font-size: 0.85rem;
+  color: #666;
+  margin-bottom: 0.75rem;
+}
+
+.progress-bar {
+  height: 8px;
+  background-color: #e0e0e0;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 0.5rem;
+}
+
+.progress-fill {
+  height: 100%;
+  background-color: #1a73e8;
+  border-radius: 4px;
+}
+
+.progress-fill.high {
+  background-color: #4caf50;
+}
+
+.progress-fill.medium {
+  background-color: #ff9800;
+}
+
+.progress-fill.low {
+  background-color: #f44336;
+}
+
+.progress-fill.low-risk {
+  background-color: #4caf50;
+}
+
+.progress-fill.medium-risk {
+  background-color: #ff9800;
+}
+
+.progress-fill.high-risk {
+  background-color: #f44336;
+}
+
+.progress-text {
+  font-size: 0.75rem;
+  color: #666;
+}
+
+.time-display {
+  font-size: 1.2rem;
+  font-weight: 500;
+  color: #1a3e72;
+  margin-bottom: 0.25rem;
+}
+
+.time-context {
+  font-size: 0.75rem;
+  color: #666;
+}
+
+/* Chart Panel */
+.chart-panel {
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.chart-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.chart-tab {
+  padding: 0.5rem 1rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: none;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.chart-tab.active {
+  background-color: #1a3e72;
+  color: white;
+  border-color: #1a3e72;
+}
+
+.chart-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  flex: 1;
+  min-height: 200px;
+  margin: 1rem 0;
+}
+
+.chart-container.single-chart {
+  grid-template-columns: 1fr;
+}
+
+.chart {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 200px;
+}
+
+.chart-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.8rem;
+  color: #666;
+}
+
+.chart-legend {
+  display: flex;
+  gap: 1.5rem;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.legend-color {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+}
+
+.empty-chart-message {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  font-style: italic;
+  color: #666;
+}
+
+/* File Upload */
+.file-upload-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex: 1;
+  padding: 2rem;
+  background-color: #f5f7fa;
+}
+
+.file-upload {
+  max-width: 600px;
+  width: 100%;
+  background-color: white;
+  border-radius: 8px;
+  padding: 2rem;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.file-upload h2 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  color: #1a3e72;
+}
+
+.instructions {
+  color: #666;
+  margin-bottom: 1.5rem;
+}
+
+.drop-area {
+  border: 2px dashed #ccc;
+  border-radius: 8px;
+  padding: 2rem;
+  text-align: center;
+  margin-bottom: 1.5rem;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.drop-area.active {
+  border-color: #1a73e8;
+  background-color: rgba(26, 115, 232, 0.05);
+}
+
+.file-input {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.drop-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.icon {
+  color: #999;
+}
+
+.browse-button {
+  background-color: #1a73e8;
+  color: white;
+  border: none;
+  padding: 0.5rem 1.5rem;
+  border-radius: 4px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.browse-button:hover {
+  background-color: #1558b3;
+}
+
+.selected-file {
+  margin-top: 0.5rem;
+  padding: 0.75rem;
+  border-radius: 4px;
+  background-color: #f5f5f5;
+  width: 100%;
+  max-width: 400px;
+}
+
+.loading {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.spinner {
+  width: 24px;
+  height: 24px;
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid #1a73e8;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.error-message {
+  color: #d32f2f;
+  background-color: rgba(211, 47, 47, 0.1);
+  padding: 0.75rem;
+  border-radius: 4px;
+  margin-bottom: 1.5rem;
+}
+
+.file-format-info {
+  border-top: 1px solid #eee;
+  padding-top: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.file-format-info h3 {
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+  font-size: 1.1rem;
+  color: #1a3e72;
+}
+
+.header-list {
+  padding-left: 1.5rem;
+  margin-top: 0.5rem;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1200px) {
+  .parameter-cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .efficiency-metrics {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 992px) {
+  .dashboard-content {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+  }
+  
+  .sidebar {
+    max-height: 300px;
+  }
+  
+  .chart-container {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 576px) {
+  .parameter-cards {
+    grid-template-columns: 1fr;
+  }
+  
+  .efficiency-metrics {
+    grid-template-columns: 1fr;
+  }
+  
+  .dashboard-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+  
+  .header-info {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
+.progress-fill.high-control {
+  background-color: #4caf50; /* Green for high control */
+}
+
+.progress-fill.medium-control {
+  background-color: #2196f3; /* Blue for medium control */
+}
+
+.progress-fill.low-control {
+  background-color: #ff9800; /* Orange for low control */
+}
+
+/* Control drilling percentage styles in stand history */
+.stand-detail-value.high-control-percent {
+  color: #4caf50; /* Green for high control */
+  font-weight: 600;
+}
+
+.stand-detail-value.medium-control-percent {
+  color: #2196f3; /* Blue for medium control */
+}
+
+.stand-detail-value.low-control-percent {
+  color: #ff9800; /* Orange for low control */
+}
+
+.stand-detail-value.very-low-control-percent {
+  color: #f44336; /* Red for very low control */
+}
+
+/* Stand indicators */
+.indicator.high-control {
+  color: #4caf50; /* Green for high control */
+}
+
+.indicator.low-control {
+  color: #f44336; /* Red for low control */
+}
+
+.chart-container.single-chart {
+  grid-template-columns: 1fr;
+}
+
+.chart.full-width {
+  width: 100%;
+  min-height: 400px; /* Taller chart for better visibility */
+}
+
+/* Adjust legend colors for control % chart */
+.chart-legend .legend-item .legend-color {
+  border-radius: 3px;
+  width: 16px;
+  height: 16px;
+}
+
+/* Add transparency to the bar charts so we can see the line behind */
+canvas {
+  opacity: 1;
+}
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+}
+
+body {
+  background-color: #121212; /* Dark background */
+  color: #e0e0e0; /* Light text for dark background */
+}
+
+.dashboard {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* Header Styles */
+.dashboard-header {
+  background-color: #1a237e; /* Darker blue */
+  color: white;
+  padding: 1rem 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+}
+
+.header-main {
+  display: flex;
+  flex-direction: column;
+}
+
+.header-main h1 {
+  font-size: 1.5rem;
+  margin: 0;
+}
+
+.header-main h2 {
+  font-size: 0.9rem;
+  font-weight: 400;
+  opacity: 0.9;
+  margin-top: 0.25rem;
+}
+
+.well-id {
+  font-family: monospace;
+  font-size: 0.9rem;
+}
+
+.header-info {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+}
+
+.header-stats {
+  display: flex;
+  gap: 1.5rem;
+}
+
+.header-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.stat-label {
+  font-size: 0.8rem;
+  opacity: 0.8;
+}
+
+.stat-value {
+  font-size: 1.1rem;
+  font-weight: 500;
+}
+
+.time-panel {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.current-time {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-size: 0.8rem;
+}
+
+.operation-status {
+  display: flex;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
+  border-radius: 50px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  background-color: rgba(255,255,255,0.15);
+}
+
+.status-indicator {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 0.5rem;
+}
+
+.status-active {
+  background-color: #4caf50;
+}
+
+.status-warning {
+  background-color: #ff9800;
+}
+
+.status-alert {
+  background-color: #f44336;
+}
+
+/* Dashboard Content Layout */
+.dashboard-content {
+  display: grid;
+  grid-template-columns: 1fr 3fr;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* Sidebar / Stand History */
+.sidebar {
+  background-color: #1e1e1e; /* Dark sidebar */
+  box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-header {
+  padding: 1.25rem;
+  border-bottom: 1px solid #333; /* Darker border */
+  position: sticky;
+  top: 0;
+  background-color: #1e1e1e; /* Dark header */
+  z-index: 1;
+}
+
+.sidebar-header h2 {
+  font-size: 1.25rem;
+  margin: 0;
+  color: #7986cb; /* Light indigo */
+}
+
+.total-stands {
+  margin-top: 0.25rem;
+  font-size: 0.85rem;
+  color: #aaa; /* Lighter text */
+}
+
+.no-data {
+  padding: 1.25rem;
+  color: #aaa; /* Lighter text */
+  font-style: italic;
+}
+
+.stand-list {
+  list-style: none;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.stand-item {
+  padding: 1.25rem;
+  border-bottom: 1px solid #333; /* Darker border */
+  cursor: pointer;
+  transition: background-color 0.2s;
+  position: relative;
+}
+
+.stand-item:hover {
+  background-color: #2c2c2c; /* Slight highlight on hover */
+}
+
+.stand-item.active {
+  background-color: #263238; /* Dark blue-grey for active */
+  border-left: 4px solid #7986cb; /* Light indigo border */
+}
+
+.stand-item.drilling {
+  border-left: 3px solid #4caf50;
+}
+
+.stand-item.other {
+  border-left: 3px solid #ff9800;
+}
+
+.stand-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.stand-title {
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.stand-time {
+  font-size: 0.8rem;
+  color: #bbb; /* Lighter gray */
+}
+
+.stand-details {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  font-size: 0.85rem;
+}
+
+.stand-detail {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.stand-detail-label {
+  color: #bbb; /* Lighter gray */
+}
+
+.stand-detail-value {
+  font-weight: 500;
+}
+
+.stand-indicators {
+  position: absolute;
+  top: 1.25rem;
+  right: 0.75rem;
+  display: flex;
+  gap: 0.25rem;
+}
+
+.indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+}
+
+.high-performance {
+  color: #4caf50;
+}
+
+.high-wob {
+  color: #ff9800;
+}
+
+.low-performance {
+  color: #f44336;
+}
+
+.long-section {
+  color: #9c27b0;
+}
+
+/* Main Content Area */
+.main-content {
+  display: grid;
+  grid-template-rows: 1fr 1fr;
+  gap: 1rem;
+  padding: 1rem;
+  overflow-y: auto;
+  background-color: #1a1a1a; /* Dark background */
+}
+
+/* Parameters Panel */
+.parameters-panel {
+  background-color: #242424; /* Dark panel */
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.panel-header h3 {
+  color: #7986cb; /* Light indigo */
+  font-size: 1.1rem;
+  margin: 0;
+}
+
+.parameter-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.parameter-card {
+  padding: 1rem;
+  border-radius: 6px;
+  background-color: #2c2c2c; /* Slightly lighter than background */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  transition: transform 0.2s;
+}
+
+.parameter-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.parameter-value {
+  font-size: 1.75rem;
+  font-weight: 600;
+  margin: 0.5rem 0;
+  color: #7986cb; /* Light indigo */
+}
+
+.parameter-label {
+  font-size: 0.85rem;
+  color: #bbb;
+}
+
+.parameter-unit {
+  font-size: 0.75rem;
+  color: #888;
+}
+
+.efficiency-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr); /* Changed to 4 columns for connection times */
+  gap: 1rem;
+}
+
+.efficiency-metric {
+  background-color: #2c2c2c; /* Slightly lighter than background */
+  padding: 1rem;
+  border-radius: 6px;
+}
+
+.metric-label {
+  font-size: 0.85rem;
+  color: #bbb;
+  margin-bottom: 0.75rem;
+}
+
+.progress-bar {
+  height: 8px;
+  background-color: #3d3d3d; /* Darker for progress bar background */
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 0.5rem;
+}
+
+.progress-fill {
+  height: 100%;
+  background-color: #1a73e8;
+  border-radius: 4px;
+}
+
+.progress-fill.high {
+  background-color: #4caf50;
+}
+
+.progress-fill.medium {
+  background-color: #ff9800;
+}
+
+.progress-fill.low {
+  background-color: #f44336;
+}
+
+.progress-fill.low-risk {
+  background-color: #4caf50;
+}
+
+.progress-fill.medium-risk {
+  background-color: #ff9800;
+}
+
+.progress-fill.high-risk {
+  background-color: #f44336;
+}
+
+.progress-fill.high-control {
+  background-color: #4caf50; /* Green for high control */
+}
+
+.progress-fill.medium-control {
+  background-color: #2196f3; /* Blue for medium control */
+}
+
+.progress-fill.low-control {
+  background-color: #ff9800; /* Orange for low control */
+}
+
+.progress-text {
+  font-size: 0.75rem;
+  color: #bbb;
+}
+
+.time-display {
+  font-size: 1.2rem;
+  font-weight: 500;
+  color: #7986cb; /* Light indigo */
+  margin-bottom: 0.25rem;
+}
+
+.time-context {
+  font-size: 0.75rem;
+  color: #bbb;
+}
+
+/* Chart Panel */
+.chart-panel {
+  background-color: #242424; /* Dark panel */
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.chart-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.chart-tab {
+  padding: 0.5rem 1rem;
+  border: 1px solid #444; /* Darker border */
+  border-radius: 4px;
+  background: none;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: #e0e0e0; /* Light text */
+}
+
+.chart-tab.active {
+  background-color: #3f51b5; /* Indigo */
+  color: white;
+  border-color: #3f51b5;
+}
+
+.chart-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  flex: 1;
+  min-height: 200px;
+  margin: 1rem 0;
+}
+
+.chart-container.single-chart {
+  grid-template-columns: 1fr;
+}
+
+.chart {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 200px;
+}
+
+.chart-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.8rem;
+  color: #bbb;
+}
+
+.chart-legend {
+  display: flex;
+  gap: 1.5rem;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.legend-color {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+}
+
+.empty-chart-message {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  font-style: italic;
+  color: #bbb;
+}
+
+/* File Upload */
+.file-upload-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex: 1;
+  padding: 2rem;
+  background-color: #1a1a1a; /* Dark background */
+}
+
+.file-upload {
+  max-width: 600px;
+  width: 100%;
+  background-color: #242424; /* Dark panel */
+  border-radius: 8px;
+  padding: 2rem;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+}
+
+.file-upload h2 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  color: #7986cb; /* Light indigo */
+}
+
+.instructions {
+  color: #bbb;
+  margin-bottom: 1.5rem;
+}
+
+.drop-area {
+  border: 2px dashed #444; /* Darker border */
+  border-radius: 8px;
+  padding: 2rem;
+  text-align: center;
+  margin-bottom: 1.5rem;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.drop-area.active {
+  border-color: #3f51b5; /* Indigo */
+  background-color: rgba(63, 81, 181, 0.1);
+}
+
+.file-input {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.drop-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.icon {
+  color: #777;
+}
+
+.browse-button {
+  background-color: #3f51b5; /* Indigo */
+  color: white;
+  border: none;
+  padding: 0.5rem 1.5rem;
+  border-radius: 4px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.browse-button:hover {
+  background-color: #303f9f; /* Darker indigo */
+}
+
+.selected-file {
+  margin-top: 0.5rem;
+  padding: 0.75rem;
+  border-radius: 4px;
+  background-color: #2c2c2c; /* Slightly lighter than background */
+  width: 100%;
+  max-width: 400px;
+}
+
+.loading {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.spinner {
+  width: 24px;
+  height: 24px;
+  border: 3px solid #333; /* Darker spinner */
+  border-top: 3px solid #3f51b5; /* Indigo */
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.error-message {
+  color: #f44336; /* Red */
+  background-color: rgba(244, 67, 54, 0.1);
+  padding: 0.75rem;
+  border-radius: 4px;
+  margin-bottom: 1.5rem;
+}
+
+.file-format-info {
+  border-top: 1px solid #333; /* Darker border */
+  padding-top: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.file-format-info h3 {
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+  font-size: 1.1rem;
+  color: #7986cb; /* Light indigo */
+}
+
+.header-list {
+  padding-left: 1.5rem;
+  margin-top: 0.5rem;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+}
+
+/* Control drilling percentage styles in stand history */
+.stand-detail-value.high-control-percent {
+  color: #4caf50; /* Green for high control */
+  font-weight: 600;
+}
+
+.stand-detail-value.medium-control-percent {
+  color: #2196f3; /* Blue for medium control */
+}
+
+.stand-detail-value.low-control-percent {
+  color: #ff9800; /* Orange for low control */
+}
+
+.stand-detail-value.very-low-control-percent {
+  color: #f44336; /* Red for very low control */
+}
+
+/* Stand indicators */
+.indicator.high-control {
+  color: #4caf50; /* Green for high control */
+}
+
+.indicator.low-control {
+  color: #f44336; /* Red for low control */
+}
+
+.chart.full-width {
+  width: 100%;
+  min-height: 400px; /* Taller chart for better visibility */
+}
+
+/* Adjust legend colors for control % chart */
+.chart-legend .legend-item .legend-color {
+  border-radius: 3px;
+  width: 16px;
+  height: 16px;
+}
+
+/* Add transparency to the bar charts so we can see the line behind */
+canvas {
+  opacity: 1;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1200px) {
+  .parameter-cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .efficiency-metrics {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 992px) {
+  .dashboard-content {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+  }
+  
+  .sidebar {
+    max-height: 300px;
+  }
+  
+  .chart-container {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 576px) {
+  .parameter-cards {
+    grid-template-columns: 1fr;
+  }
+  
+  .efficiency-metrics {
+    grid-template-columns: 1fr;
+  }
+  
+  .dashboard-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+  
+  .header-info {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
+
+/* Connection time styles */
+.connection-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+.connection-metric {
+  background-color: #2c2c2c;
+  padding: 1rem;
+  border-radius: 6px;
+}
+
+.connection-value {
+  font-size: 1.5rem;
+  font-weight: 500;
+  margin: 0.5rem 0;
+  color: #7986cb;
+}
+
+.connection-breakdown {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 0.5rem;
+  font-size: 0.8rem;
+}
+
+.control-value {
+  color: #4caf50;
+}
+
+.manual-value {
+  color: #ff9800;
+}
+
+/* Connection time progress bars */
+.connection-progress {
+  display: flex;
+  height: 8px;
+  background-color: #3d3d3d;
+  border-radius: 4px;
+  overflow: hidden;
+  margin: 0.5rem 0;
+}
+
+.connection-progress-control {
+  height: 100%;
+  background-color: #4caf50;
+}
+
+.connection-progress-manual {
+  height: 100%;
+  background-color: #ff9800;
+}
+
+.chart-container.connection-control-container {
+  height: 450px;
+}
+
+.control-kpi-container {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+  margin-bottom: 1rem;
+  background-color: #242424;
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.control-kpi-card {
+  background-color: #2c2c2c;
+  border-radius: 6px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.control-kpi-title {
+  font-size: 0.9rem;
+  color: #bbb;
+  margin-bottom: 0.5rem;
+}
+
+.control-kpi-value {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #7986cb;
+  margin-bottom: 0.25rem;
+}
+
+.control-kpi-percentage {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.control-percentage {
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.control-percentage.high {
+  color: #4caf50;
+}
+
+.control-percentage.medium {
+  color: #2196f3;
+}
+
+.control-percentage.low {
+  color: #ff9800;
+}
+
+.control-percentage.very-low {
+  color: #f44336;
+}
+
+.trend-indicator {
+  display: flex;
+  align-items: center;
+  font-size: 0.8rem;
+}
+
+.trend-indicator.up {
+  color: #4caf50;
+}
+
+.trend-indicator.down {
+  color: #f44336;
+}
+
+.trend-indicator.neutral {
+  color: #bbb;
+}
+
+.trend-arrow {
+  margin-right: 0.25rem;
+}
+
+/* Connection time comparison chart */
+.comparison-container {
+  background-color: #242424;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-top: 1rem;
+}
+
+.comparison-title {
+  color: #7986cb;
+  font-size: 1.1rem;
+  margin-bottom: 0.75rem;
+}
+
+.comparison-chart {
+  display: flex;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.comparison-label {
+  width: 120px;
+  font-size: 0.9rem;
+  color: #bbb;
+}
+
+.comparison-bar {
+  flex: 1;
+  height: 24px;
+  background-color: #3d3d3d;
+  border-radius: 4px;
+  overflow: hidden;
+  display: flex;
+}
+
+.comparison-control {
+  height: 100%;
+  background-color: #4caf50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.comparison-manual {
+  height: 100%;
+  background-color: #ff9800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+/* Time formatting for connection display */
+.time-display {
+  display: flex;
+  gap: 0.5rem;
+  align-items: baseline;
+}
+
+.time-value {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #7986cb;
+}
+
+.time-unit {
+  font-size: 0.9rem;
+  color: #bbb;
+}
+
+/* Improved chart tooltip styling */
+.custom-tooltip {
+  background-color: rgba(36, 36, 36, 0.9);
+  border: 1px solid #444;
+  border-radius: 4px;
+  padding: 0.5rem;
+  color: #e0e0e0;
+  font-size: 0.9rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.tooltip-title {
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+  color: #7986cb;
+}
+
+.tooltip-control {
+  color: #4caf50;
+  display: flex;
+  justify-content: space-between;
+}
+
+.tooltip-manual {
+  color: #ff9800;
+  display: flex;
+  justify-content: space-between;
+}
+
+.tooltip-total {
+  margin-top: 0.25rem;
+  padding-top: 0.25rem;
+  border-top: 1px solid #444;
+  display: flex;
+  justify-content: space-between;
+  font-weight: 500;
+}
+
+/* Additional styling for connection control chart */
+.connection-control-chart .chart {
+  height: 400px;
+}
+
+.connection-average-line {
+  border-top: 2px dashed #7986cb;
+  position: relative;
+  margin: 0.5rem 0;
+  opacity: 0.6;
+}
+
+.average-label {
+  position: absolute;
+  right: 0;
+  top: -10px;
+  background-color: #242424;
+  padding: 0 0.5rem;
+  font-size: 0.8rem;
+  color: #7986cb;
+}
+
+.chart-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.limit-toggle {
+  display: flex;
+  align-items: center;
+  margin-top: 0.5rem;
+}
+
+.limit-toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: #bbb;
+  cursor: pointer;
+}
+
+.limits-info {
+  font-size: 0.8rem;
+  color: #ffcc00;
+  margin-top: 0.25rem;
+}
