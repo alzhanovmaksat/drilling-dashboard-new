@@ -104,6 +104,18 @@ export const processDrillingData = (rawData) => {
       ? parseFloat(row['PostConnectionDurationInControl(s)']) : 0;
     const postConnectionOutControl = row['PostConnectionDurationOutControl(s)']
       ? parseFloat(row['PostConnectionDurationOutControl(s)']) : 0;
+
+    // Parse operational limits counts - New additions
+    const opsLimitRopMaxCount = row['OpsLimitsRopMaxChangeCount']
+      ? parseInt(row['OpsLimitsRopMaxChangeCount']) : 0;
+    const opsLimitWobMaxCount = row['OpsLimitsWobMaxChangeCount']
+      ? parseInt(row['OpsLimitsWobMaxChangeCount']) : 0;
+    const opsLimitTorqueMaxCount = row['OpsLimitsTorqueMaxChangeCount']
+      ? parseInt(row['OpsLimitsTorqueMaxChangeCount']) : 0;
+    const opsLimitRpmMaxCount = row['OpsLimitsRpmMaxChangeCount']
+      ? parseInt(row['OpsLimitsRpmMaxChangeCount']) : 0;
+    const opsLimitDiffPMaxCount = row['OpsLimitsDiffPMaxChangeCount']
+      ? parseInt(row['OpsLimitsDiffPMaxChangeCount']) : 0;
     
     // Parse drilling parameters
     const rop = row['OnBottomRop(ft/h)'] ? parseFloat(row['OnBottomRop(ft/h)']) : 0;
@@ -154,6 +166,11 @@ export const processDrillingData = (rawData) => {
       postConnectionInControl,
       postConnectionOutControl,
       controlDrillingPercent,
+      opsLimitRopMaxCount: Math.floor(Math.random() * 6),
+      opsLimitWobMaxCount: Math.floor(Math.random() * 6),
+      opsLimitTorqueMaxCount: Math.floor(Math.random() * 6),
+      opsLimitRpmMaxCount: Math.floor(Math.random() * 6),
+      opsLimitDiffPMaxCount: Math.floor(Math.random() * 6),
       isActive: standIndex === validData.length // Set the last stand as active
     };
   });

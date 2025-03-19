@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import Header from './Header';
-import StandHistory from './StandHistory';
 import ParametersPanel from './ParametersPanel';
+import OpsLimitsTracker from './OpsLimitsTracker';
 import ChartPanel from './ChartPanel';
+import TimeBreakdownAnalysis from './TimeBreakdownAnalysis';
+import OpsLimitsChart from './OpsLimitsChart';
+import ConnectionKPI from './ConnectionKPI';
 import FileUpload from './FileUpload';
 import { readDrillingDataFromCSV, processDrillingData } from '../utils/csvDataProvider';
 import { readDrillingDataFromExcel, processExcelData } from '../utils/excelDataProvider';
@@ -32,15 +35,81 @@ function Dashboard() {
     rateStability: 75 // Default stability value
   });
   
+  // Helper function to safely use toFixed on potentially undefined values
+  const safeToFixed = (value, decimals = 0) => {
+    if (value === undefined || value === null || isNaN(value)) {
+      return '0.' + '0'.repeat(decimals);
+    }
+    return Number(value).toFixed(decimals);
+  };
+  
+  // Helper function to safely access nested properties
+  const safeGet = (obj, path, defaultValue = null) => {
+    try {
+      const parts = path.split('.');
+      let result = obj;
+      
+      for (const part of parts) {
+        if (result === undefined || result === null) {
+          return defaultValue;
+        }
+        result = result[part];
+      }
+      
+      return result === undefined ? defaultValue : result;
+    } catch (e) {
+      console.warn(`Error accessing path ${path}:`, e);
+      return defaultValue;
+    }
+  };
+  
+  // Helper to initialize drilling parameters
+  const initDrillingParams = () => ({
+    wob: 0,
+    rop: 0,
+    rpm: 0,
+    torque: 0,
+    pumpPressure: 0,
+    flowRate: 0,
+    depth: 0,
+    rotaryDuration: 0,
+    slideDuration: 0,
+    stickSlipLevel: 0,
+    connectionTime: 0,
+    preConnectionTime: 0,
+    postConnectionTime: 0,
+    preConnectionInControl: 0,
+    preConnectionOutControl: 0,
+    postConnectionInControl: 0,
+    postConnectionOutControl: 0,
+    controlDrillingPercent: 0,
+    rateStability: 75 // Default stability value
+  });
+  
+  // Helper to initialize drilling metrics
+  const initDrillingMetrics = () => ({
+    totalDistanceDrilled: 0,
+    totalControlDrillingPercent: 0,
+    drillInControlDistance: 0,
+    preConnectionControlPercent: 0,
+    postConnectionControlPercent: 0,
+    totalMeters: 0,
+    drillInControlMeters: 0
+  });
+  
   // State for stand history
   const [stands, setStands] = useState([]);
   
+  // State for filtered stands based on time range
+  const [filteredStands, setFilteredStands] = useState([]);
+  
   // State for well information
   const [wellInfo, setWellInfo] = useState({
-    wellId: '',
+    wellId: 'Max',
     totalStands: 0,
     totalDepth: 0,
-    currentStand: 0
+    currentStand: 0,
+    section: '12 1/4'
   });
   
   // State for chart data
@@ -51,49 +120,179 @@ function Dashboard() {
     torque: { labels: [], data: [] },
     rpm: { labels: [], data: [] },
     controlPercent: { labels: [], data: [] },
-    connectionTime: { labels: [], data: [] }
+    connectionTime: { labels: [], data: [] },
+    preConnectionTime: { labels: [], data: [] },
+    postConnectionTime: { labels: [], data: [] },
+    preConnectionControl: { labels: [], data: [] },
+    preConnectionManual: { labels: [], data: [] },
+    postConnectionControl: { labels: [], data: [] },
+    postConnectionManual: { labels: [], data: [] }
   });
+  
+  // State for filtered chart data based on time range
+  const [filteredChartData, setFilteredChartData] = useState(chartData);
   
   // State for data loading
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [hasData, setHasData] = useState(false);
   
+  // New state for selected stand from dropdown
+  const [selectedStandId, setSelectedStandId] = useState(null);
+  
+  // New state for time range
+  const [timeRange, setTimeRange] = useState({
+    start: null, 
+    end: null
+  });
+  
+  // State for active time preset
+  const [activePreset, setActivePreset] = useState('all');
+  
+  // State for ops limit counts
+  const [opsLimits, setOpsLimits] = useState({
+    wob: 0,
+    torque: 0,
+    rpm: 0,
+    rop: 0,
+    diffP: 0
+  });
+
+  // State for connection KPI data
+  const [connectionData, setConnectionData] = useState({
+    connectionTime: 0,
+    preConnectionTime: 0,
+    postConnectionTime: 0,
+    preConnectionInControl: 0,
+    preConnectionOutControl: 0,
+    postConnectionInControl: 0,
+    postConnectionOutControl: 0
+  });
+  
+  // Format date as YYYY-MM-DD
+  const formatDateForInput = (date) => {
+    if (!date) return '';
+    const d = new Date(date);
+    return d.toISOString().split('T')[0];
+  };
+  
+  // Get date for preset time ranges
+  const getDateForPreset = (preset) => {
+    const now = new Date();
+    let startDate;
+    
+    switch(preset) {
+      case '12h':
+        startDate = new Date(now.getTime() - (12 * 60 * 60 * 1000));
+        return {
+          start: formatDateForInput(startDate),
+          end: formatDateForInput(now)
+        };
+      case '24h':
+        startDate = new Date(now.getTime() - (24 * 60 * 60 * 1000));
+        return {
+          start: formatDateForInput(startDate),
+          end: formatDateForInput(now)
+        };
+      case '7d':
+        startDate = new Date(now.getTime() - (7 * 24 * 60 * 60 * 1000));
+        return {
+          start: formatDateForInput(startDate),
+          end: formatDateForInput(now)
+        };
+      case 'all':
+      default:
+        // For all data, find min and max dates in stands
+        if (stands.length > 0) {
+          const startTimes = stands
+            .filter(stand => stand.startTime)
+            .map(stand => new Date(stand.startTime).getTime());
+          
+          if (startTimes.length > 0) {
+            const minTime = new Date(Math.min(...startTimes));
+            return {
+              start: formatDateForInput(minTime),
+              end: formatDateForInput(now)
+            };
+          }
+        }
+        // Fallback to last 30 days if no stand data
+        startDate = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000));
+        return {
+          start: formatDateForInput(startDate),
+          end: formatDateForInput(now)
+        };
+    }
+  };
+  
   // Process connection time data from raw drilling data
   const processConnectionTimeData = (rawData) => {
+    if (!rawData || !Array.isArray(rawData) || rawData.length === 0) {
+      return {
+        connectionTimeSeries: { labels: [], data: [] },
+        preConnectionTimeSeries: { labels: [], data: [] },
+        postConnectionTimeSeries: { labels: [], data: [] },
+        preConnectionControlSeries: { labels: [], data: [] },
+        preConnectionManualSeries: { labels: [], data: [] },
+        postConnectionControlSeries: { labels: [], data: [] },
+        postConnectionManualSeries: { labels: [], data: [] },
+        avgConnectionTime: 0,
+        avgPreConnectionTime: 0,
+        avgPostConnectionTime: 0,
+        avgPreConnectionInControl: 0,
+        avgPreConnectionOutControl: 0,
+        avgPostConnectionInControl: 0,
+        avgPostConnectionOutControl: 0
+      };
+    }
+    
     // Extract connection time related data
     const connectionTimeData = rawData.map(row => ({
-      standIndex: parseInt(row['StandIndex']),
-      connectionDuration: parseFloat(row['ConnectionDuration(s)']),
-      preConnectionDuration: parseFloat(row['PreConnectionDuration(s)']),
-      postConnectionDuration: parseFloat(row['PostConnectionDuration(s)']),
-      preConnectionInControl: parseFloat(row['PreConnectionDurationInControl(s)']),
-      preConnectionOutControl: parseFloat(row['PreConnectionDurationOutControl(s)']),
-      postConnectionInControl: parseFloat(row['PostConnectionDurationInControl(s)']),
-      postConnectionOutControl: parseFloat(row['PostConnectionDurationOutControl(s)'])
+      standIndex: parseInt(row['StandIndex'] || 0),
+      connectionDuration: parseFloat(row['ConnectionDuration(s)'] || 0),
+      preConnectionDuration: parseFloat(row['PreConnectionDuration(s)'] || 0),
+      postConnectionDuration: parseFloat(row['PostConnectionDuration(s)'] || 0),
+      preConnectionInControl: parseFloat(row['PreConnectionDurationInControl(s)'] || 0),
+      preConnectionOutControl: parseFloat(row['PreConnectionDurationOutControl(s)'] || 0),
+      postConnectionInControl: parseFloat(row['PostConnectionDurationInControl(s)'] || 0),
+      postConnectionOutControl: parseFloat(row['PostConnectionDurationOutControl(s)'] || 0)
     }));
-
+    
     // Calculate average values for the current set
-    const avgConnectionTime = connectionTimeData.reduce((sum, item) => 
-      sum + (isNaN(item.connectionDuration) ? 0 : item.connectionDuration), 0) / connectionTimeData.length;
+    const validConnTimeData = connectionTimeData.filter(item => !isNaN(item.connectionDuration));
+    const avgConnectionTime = validConnTimeData.length > 0 
+      ? validConnTimeData.reduce((sum, item) => sum + item.connectionDuration, 0) / validConnTimeData.length 
+      : 0;
     
-    const avgPreConnectionTime = connectionTimeData.reduce((sum, item) => 
-      sum + (isNaN(item.preConnectionDuration) ? 0 : item.preConnectionDuration), 0) / connectionTimeData.length;
+    const validPreConnTimeData = connectionTimeData.filter(item => !isNaN(item.preConnectionDuration));
+    const avgPreConnectionTime = validPreConnTimeData.length > 0 
+      ? validPreConnTimeData.reduce((sum, item) => sum + item.preConnectionDuration, 0) / validPreConnTimeData.length 
+      : 0;
     
-    const avgPostConnectionTime = connectionTimeData.reduce((sum, item) => 
-      sum + (isNaN(item.postConnectionDuration) ? 0 : item.postConnectionDuration), 0) / connectionTimeData.length;
+    const validPostConnTimeData = connectionTimeData.filter(item => !isNaN(item.postConnectionDuration));
+    const avgPostConnectionTime = validPostConnTimeData.length > 0 
+      ? validPostConnTimeData.reduce((sum, item) => sum + item.postConnectionDuration, 0) / validPostConnTimeData.length 
+      : 0;
     
-    const avgPreConnectionInControl = connectionTimeData.reduce((sum, item) => 
-      sum + (isNaN(item.preConnectionInControl) ? 0 : item.preConnectionInControl), 0) / connectionTimeData.length;
+    const validPreConnInControlData = connectionTimeData.filter(item => !isNaN(item.preConnectionInControl));
+    const avgPreConnectionInControl = validPreConnInControlData.length > 0 
+      ? validPreConnInControlData.reduce((sum, item) => sum + item.preConnectionInControl, 0) / validPreConnInControlData.length 
+      : 0;
     
-    const avgPreConnectionOutControl = connectionTimeData.reduce((sum, item) => 
-      sum + (isNaN(item.preConnectionOutControl) ? 0 : item.preConnectionOutControl), 0) / connectionTimeData.length;
+    const validPreConnOutControlData = connectionTimeData.filter(item => !isNaN(item.preConnectionOutControl));
+    const avgPreConnectionOutControl = validPreConnOutControlData.length > 0 
+      ? validPreConnOutControlData.reduce((sum, item) => sum + item.preConnectionOutControl, 0) / validPreConnOutControlData.length 
+      : 0;
     
-    const avgPostConnectionInControl = connectionTimeData.reduce((sum, item) => 
-      sum + (isNaN(item.postConnectionInControl) ? 0 : item.postConnectionInControl), 0) / connectionTimeData.length;
+    const validPostConnInControlData = connectionTimeData.filter(item => !isNaN(item.postConnectionInControl));
+    const avgPostConnectionInControl = validPostConnInControlData.length > 0 
+      ? validPostConnInControlData.reduce((sum, item) => sum + item.postConnectionInControl, 0) / validPostConnInControlData.length 
+      : 0;
     
-    const avgPostConnectionOutControl = connectionTimeData.reduce((sum, item) => 
-      sum + (isNaN(item.postConnectionOutControl) ? 0 : item.postConnectionOutControl), 0) / connectionTimeData.length;
+    const validPostConnOutControlData = connectionTimeData.filter(item => !isNaN(item.postConnectionOutControl));
+    const avgPostConnectionOutControl = validPostConnOutControlData.length > 0 
+      ? validPostConnOutControlData.reduce((sum, item) => sum + item.postConnectionOutControl, 0) / validPostConnOutControlData.length 
+      : 0;
     
     // Create time series data for charts
     const connectionTimeSeries = {
@@ -101,9 +300,45 @@ function Dashboard() {
       data: connectionTimeData.map(item => isNaN(item.connectionDuration) ? 0 : item.connectionDuration)
     };
     
+    const preConnectionTimeSeries = {
+      labels: connectionTimeData.map(item => `Stand ${item.standIndex}`),
+      data: connectionTimeData.map(item => isNaN(item.preConnectionDuration) ? 0 : item.preConnectionDuration)
+    };
+    
+    const postConnectionTimeSeries = {
+      labels: connectionTimeData.map(item => `Stand ${item.standIndex}`),
+      data: connectionTimeData.map(item => isNaN(item.postConnectionDuration) ? 0 : item.postConnectionDuration)
+    };
+
+    const preConnectionControlSeries = {
+      labels: connectionTimeData.map(item => `Stand ${item.standIndex}`),
+      data: connectionTimeData.map(item => isNaN(item.preConnectionInControl) ? 0 : item.preConnectionInControl)
+    };
+
+    const preConnectionManualSeries = {
+      labels: connectionTimeData.map(item => `Stand ${item.standIndex}`),
+      data: connectionTimeData.map(item => isNaN(item.preConnectionOutControl) ? 0 : item.preConnectionOutControl)
+    };
+
+    const postConnectionControlSeries = {
+      labels: connectionTimeData.map(item => `Stand ${item.standIndex}`),
+      data: connectionTimeData.map(item => isNaN(item.postConnectionInControl) ? 0 : item.postConnectionInControl)
+    };
+
+    const postConnectionManualSeries = {
+      labels: connectionTimeData.map(item => `Stand ${item.standIndex}`),
+      data: connectionTimeData.map(item => isNaN(item.postConnectionOutControl) ? 0 : item.postConnectionOutControl)
+    };
+    
     // Return processed data
     return {
       connectionTimeSeries,
+      preConnectionTimeSeries,
+      postConnectionTimeSeries,
+      preConnectionControlSeries,
+      preConnectionManualSeries,
+      postConnectionControlSeries,
+      postConnectionManualSeries,
       avgConnectionTime,
       avgPreConnectionTime,
       avgPostConnectionTime,
@@ -111,6 +346,80 @@ function Dashboard() {
       avgPreConnectionOutControl,
       avgPostConnectionInControl,
       avgPostConnectionOutControl
+    };
+  };
+  
+  // Process operational limits data
+  const processOpsLimitsData = (rawData) => {
+    if (!rawData || !Array.isArray(rawData) || rawData.length === 0) {
+      return {
+        ropMaxCounts: { labels: [], data: [] },
+        wobMaxCounts: { labels: [], data: [] },
+        torqueMaxCounts: { labels: [], data: [] },
+        rpmMaxCounts: { labels: [], data: [] },
+        diffPMaxCounts: { labels: [], data: [] },
+        totalRopMaxCount: 0,
+        totalWobMaxCount: 0,
+        totalTorqueMaxCount: 0,
+        totalRpmMaxCount: 0,
+        totalDiffPMaxCount: 0
+      };
+    }
+    
+    // Extract ops limits data
+    const opsLimitsData = rawData.map(row => ({
+      standIndex: parseInt(row['StandIndex'] || 0),
+      ropMaxCount: parseInt(row['OpsLimitsRopMaxChangeCount'] || 0),
+      wobMaxCount: parseInt(row['OpsLimitsWobMaxChangeCount'] || 0),
+      torqueMaxCount: parseInt(row['OpsLimitsTorqueMaxChangeCount'] || 0),
+      rpmMaxCount: parseInt(row['OpsLimitsRpmMaxChangeCount'] || 0),
+      diffPMaxCount: parseInt(row['OpsLimitsDiffPMaxChangeCount'] || 0)
+    }));
+    
+    // Calculate totals
+    const totalRopMaxCount = opsLimitsData.reduce((sum, item) => sum + (item.ropMaxCount || 0), 0);
+    const totalWobMaxCount = opsLimitsData.reduce((sum, item) => sum + (item.wobMaxCount || 0), 0);
+    const totalTorqueMaxCount = opsLimitsData.reduce((sum, item) => sum + (item.torqueMaxCount || 0), 0);
+    const totalRpmMaxCount = opsLimitsData.reduce((sum, item) => sum + (item.rpmMaxCount || 0), 0);
+    const totalDiffPMaxCount = opsLimitsData.reduce((sum, item) => sum + (item.diffPMaxCount || 0), 0);
+    
+    // Create time series data for charts
+    const ropMaxCounts = {
+      labels: opsLimitsData.map(item => `Stand ${item.standIndex}`),
+      data: opsLimitsData.map(item => item.ropMaxCount || 0)
+    };
+    
+    const wobMaxCounts = {
+      labels: opsLimitsData.map(item => `Stand ${item.standIndex}`),
+      data: opsLimitsData.map(item => item.wobMaxCount || 0)
+    };
+    
+    const torqueMaxCounts = {
+      labels: opsLimitsData.map(item => `Stand ${item.standIndex}`),
+      data: opsLimitsData.map(item => item.torqueMaxCount || 0)
+    };
+    
+    const rpmMaxCounts = {
+      labels: opsLimitsData.map(item => `Stand ${item.standIndex}`),
+      data: opsLimitsData.map(item => item.rpmMaxCount || 0)
+    };
+    
+    const diffPMaxCounts = {
+      labels: opsLimitsData.map(item => `Stand ${item.standIndex}`),
+      data: opsLimitsData.map(item => item.diffPMaxCount || 0)
+    };
+    
+    return {
+      ropMaxCounts,
+      wobMaxCounts,
+      torqueMaxCounts,
+      rpmMaxCounts,
+      diffPMaxCounts,
+      totalRopMaxCount,
+      totalWobMaxCount,
+      totalTorqueMaxCount,
+      totalRpmMaxCount,
+      totalDiffPMaxCount
     };
   };
   
@@ -149,15 +458,31 @@ function Dashboard() {
       }
       
       console.log("Processed stands:", processedData.stands.length);
-      console.log("Sample stand:", processedData.stands[0]);
+      
+      // Make sure stand IDs are properly set and sorted
+      const sortedStands = processedData.stands.map((stand, index) => ({
+        ...stand,
+        id: stand.id || index + 1
+      })).sort((a, b) => a.id - b.id);
+      
+      console.log("Sample stand:", sortedStands[0]);
       
       // Process connection time data
       const connectionTimeData = processConnectionTimeData(rawData);
       
+      // Process operational limits data
+      const opsLimitsData = processOpsLimitsData(rawData);
+      
       // Update chart data with connection time series
       const updatedChartData = {
         ...processedData.timeSeriesData,
-        connectionTime: connectionTimeData.connectionTimeSeries
+        connectionTime: connectionTimeData.connectionTimeSeries,
+        preConnectionTime: connectionTimeData.preConnectionTimeSeries,
+        postConnectionTime: connectionTimeData.postConnectionTimeSeries,
+        preConnectionControl: connectionTimeData.preConnectionControlSeries,
+        preConnectionManual: connectionTimeData.preConnectionManualSeries,
+        postConnectionControl: connectionTimeData.postConnectionControlSeries,
+        postConnectionManual: connectionTimeData.postConnectionManualSeries
       };
       
       // Update drilling parameters with connection time data
@@ -171,17 +496,61 @@ function Dashboard() {
         postConnectionInControl: connectionTimeData.avgPostConnectionInControl,
         postConnectionOutControl: connectionTimeData.avgPostConnectionOutControl
       };
+
+      // Update connection KPI data
+      const updatedConnectionData = {
+        connectionTime: connectionTimeData.avgConnectionTime,
+        preConnectionTime: connectionTimeData.avgPreConnectionTime,
+        postConnectionTime: connectionTimeData.avgPostConnectionTime,
+        preConnectionInControl: connectionTimeData.avgPreConnectionInControl,
+        preConnectionOutControl: connectionTimeData.avgPreConnectionOutControl,
+        postConnectionInControl: connectionTimeData.avgPostConnectionInControl,
+        postConnectionOutControl: connectionTimeData.avgPostConnectionOutControl
+      };
+      
+      // Update ops limits state
+      const updatedOpsLimits = {
+        rop: opsLimitsData.totalRopMaxCount,
+        wob: opsLimitsData.totalWobMaxCount,
+        torque: opsLimitsData.totalTorqueMaxCount,
+        rpm: opsLimitsData.totalRpmMaxCount,
+        diffP: opsLimitsData.totalDiffPMaxCount
+      };
+      
+      // Override wellId with Max Test and section with 12 1/4
+      const updatedWellInfo = {
+        ...processedData.wellInfo,
+        wellId: 'Max Test',
+        section: '12 1/4'
+      };
+      
+      // Set the selectedStandId to the most recent stand
+      const mostRecentStandId = sortedStands[sortedStands.length - 1].id;
+      setSelectedStandId(mostRecentStandId);
       
       // Update state with processed data
-      setStands(processedData.stands);
+      setStands(sortedStands);
+      
+      // Set time range to all data by default
+      const initialTimeRange = getDateForPreset('all');
+      setTimeRange(initialTimeRange);
+      setActivePreset('all');
+      
+      // Filter data with the initial time range
+      const filteredData = filterDataByTimeRange(sortedStands, updatedChartData, initialTimeRange);
+      setFilteredStands(filteredData.filteredStands);
+      setFilteredChartData(filteredData.filteredChartData);
+      
       setDrillingParams(updatedDrillingParams);
       setChartData(updatedChartData);
-      setWellInfo(processedData.wellInfo);
+      setWellInfo(updatedWellInfo);
+      setConnectionData(updatedConnectionData);
+      setOpsLimits(updatedOpsLimits);
       
       setHasData(true);
       
       // Start simulation for real-time effect
-      startDataSimulation(processedData.stands, connectionTimeData);
+      startDataSimulation(sortedStands, connectionTimeData);
       
     } catch (err) {
       console.error("Error processing file:", err);
@@ -191,39 +560,294 @@ function Dashboard() {
     }
   };
   
+  // Handle stand selection from dropdown
+  const handleStandDropdownChange = (e) => {
+    const standId = parseInt(e.target.value);
+    handleStandSelect(standId);
+  };
+  
+  // Handle time preset selection
+  const handleTimePresetChange = (preset) => {
+    setActivePreset(preset);
+    const newTimeRange = getDateForPreset(preset);
+    setTimeRange(newTimeRange);
+    
+    // Filter data by the new time range
+    const filteredData = filterDataByTimeRange(stands, chartData, newTimeRange);
+    setFilteredStands(filteredData.filteredStands);
+    setFilteredChartData(filteredData.filteredChartData);
+  };
+  
+  // Handle time range change from date inputs
+  const handleTimeRangeChange = (e, field) => {
+    const newTimeRange = {
+      ...timeRange,
+      [field]: e.target.value
+    };
+    
+    setTimeRange(newTimeRange);
+    setActivePreset('custom'); // Switch to custom preset when manually changing dates
+    
+    // Filter data by the new time range
+    const filteredData = filterDataByTimeRange(stands, chartData, newTimeRange);
+    setFilteredStands(filteredData.filteredStands);
+    setFilteredChartData(filteredData.filteredChartData);
+  };
+  
+  // Filter data by time range
+  const filterDataByTimeRange = (standsToFilter, originalChartData, range) => {
+    if (!standsToFilter || standsToFilter.length === 0) {
+      return {
+        filteredStands: [],
+        filteredChartData: originalChartData
+      };
+    }
+    
+    const startDate = range.start ? new Date(range.start) : new Date(0); // Jan 1, 1970 if no start date
+    const endDate = range.end ? new Date(range.end) : new Date(); // Current date if no end date
+    
+    // Make sure endDate is set to the end of the day for inclusive comparison
+    endDate.setHours(23, 59, 59, 999);
+    
+    // Filter stands based on date range
+    const newFilteredStands = standsToFilter.filter(stand => {
+      if (!stand.startTime) return true; // Include stands without timestamps
+      
+      const standDate = new Date(stand.startTime);
+      return standDate >= startDate && standDate <= endDate;
+    });
+    
+    // Filter chart data based on stand indices
+    const filteredIndices = new Set(newFilteredStands.map(stand => stand.id));
+    
+    // Create filtered chart data
+    const newFilteredChartData = {};
+    
+    // For each chart type (rop, wob, etc.)
+    Object.keys(originalChartData).forEach(key => {
+      const originalData = originalChartData[key];
+      
+      // If data exists
+      if (originalData && originalData.labels) {
+        // Create filtered arrays
+        const filteredLabels = [];
+        const filteredData = [];
+        
+        // Loop through original data
+        for (let i = 0; i < originalData.labels.length; i++) {
+          const standLabel = originalData.labels[i];
+          const standIdMatch = standLabel.match(/Stand (\d+)/);
+          
+          if (standIdMatch) {
+            const standId = parseInt(standIdMatch[1]);
+            
+            // If stand ID is in our filtered set, include it
+            if (filteredIndices.has(standId)) {
+              filteredLabels.push(originalData.labels[i]);
+              filteredData.push(originalData.data[i]);
+            }
+          }
+        }
+        
+        // Add filtered data to new chart data object
+        newFilteredChartData[key] = {
+          labels: filteredLabels,
+          data: filteredData
+        };
+      } else {
+        // If no data exists, use empty arrays
+        newFilteredChartData[key] = { labels: [], data: [] };
+      }
+    });
+    
+    return {
+      filteredStands: newFilteredStands,
+      filteredChartData: newFilteredChartData
+    };
+  };
+  
   // Handle stand selection
   const handleStandSelect = (standId) => {
-    setStands(prev => 
-      prev.map(stand => ({
-        ...stand,
-        isActive: stand.id === standId
-      }))
-    );
-    
-    // When a stand is selected, update the parameters display
-    const selectedStand = stands.find(stand => stand.id === standId);
-    if (selectedStand) {
-      setDrillingParams({
-        wob: selectedStand.wob,
-        rop: selectedStand.rop,
-        rpm: selectedStand.rpm,
-        torque: selectedStand.torque,
-        flowRate: selectedStand.flowRate,
-        depth: selectedStand.depth,
-        rotaryDuration: selectedStand.rotaryDuration || 0,
-        slideDuration: selectedStand.slideDuration || 0,
-        stickSlipLevel: 0, // Default value as we don't have this in stand history
-        connectionTime: selectedStand.connectionTime || 0,
-        preConnectionTime: selectedStand.preConnectionTime || 0,
-        postConnectionTime: selectedStand.postConnectionTime || 0,
-        preConnectionInControl: selectedStand.preConnectionInControl || 0,
-        preConnectionOutControl: selectedStand.preConnectionOutControl || 0,
-        postConnectionInControl: selectedStand.postConnectionInControl || 0,
-        postConnectionOutControl: selectedStand.postConnectionOutControl || 0,
-        controlDrillingPercent: selectedStand.controlDrillingPercent || 0,
-        rateStability: Math.floor(70 + Math.random() * 20) // Random stability for demo
+    try {
+      if (!standId) return; // Guard against null/undefined standId
+      
+      setSelectedStandId(standId);
+      
+      // Safely set stands with active flag
+      setStands(prev => {
+        if (!prev || !Array.isArray(prev)) return [];
+        return prev.map(stand => ({
+          ...stand,
+          isActive: stand && stand.id === standId
+        }));
       });
+      
+      // When a stand is selected, update the parameters display
+      const selectedStand = stands && Array.isArray(stands) 
+        ? stands.find(stand => stand && stand.id === standId) 
+        : null;
+      
+      if (selectedStand) {
+        // Create a safe version of the drilling params
+        const safeParams = {
+          wob: selectedStand.wob || 0,
+          rop: selectedStand.rop || 0,
+          rpm: selectedStand.rpm || 0,
+          torque: selectedStand.torque || 0,
+          flowRate: selectedStand.flowRate || 0,
+          depth: selectedStand.depth || 0,
+          rotaryDuration: selectedStand.rotaryDuration || 0,
+          slideDuration: selectedStand.slideDuration || 0,
+          stickSlipLevel: 0, // Default value as we don't have this in stand history
+          connectionTime: selectedStand.connectionTime || 0,
+          preConnectionTime: selectedStand.preConnectionTime || 0,
+          postConnectionTime: selectedStand.postConnectionTime || 0,
+          preConnectionInControl: selectedStand.preConnectionInControl || 0,
+          preConnectionOutControl: selectedStand.preConnectionOutControl || 0,
+          postConnectionInControl: selectedStand.postConnectionInControl || 0,
+          postConnectionOutControl: selectedStand.postConnectionOutControl || 0,
+          controlDrillingPercent: selectedStand.controlDrillingPercent || 0,
+          rateStability: Math.floor(70 + Math.random() * 20) // Random stability for demo
+        };
+        
+        setDrillingParams(safeParams);
+
+        // Update connection KPI data
+        setConnectionData({
+          connectionTime: selectedStand.connectionTime || 0,
+          preConnectionTime: selectedStand.preConnectionTime || 0,
+          postConnectionTime: selectedStand.postConnectionTime || 0,
+          preConnectionInControl: selectedStand.preConnectionInControl || 0,
+          preConnectionOutControl: selectedStand.preConnectionOutControl || 0,
+          postConnectionInControl: selectedStand.postConnectionInControl || 0,
+          postConnectionOutControl: selectedStand.postConnectionOutControl || 0
+        });
+      }
+    } catch (error) {
+      console.error("Error in handleStandSelect:", error);
+      // Don't update state if there's an error to avoid further issues
     }
+  };
+  
+  // Calculate drilling metrics
+  const calculateDrillingMetrics = (standsToCalculate = filteredStands) => {
+    try {
+      // If no stands or empty array, return zero values
+      if (!standsToCalculate || !Array.isArray(standsToCalculate) || standsToCalculate.length === 0) {
+        return initDrillingMetrics(); // Return default metrics
+      }
+      
+      // Use safe reducer to avoid undefined access
+      const safeReduceSum = (array, keyFn, defaultValue = 0) => {
+        if (!array || !Array.isArray(array)) return defaultValue;
+        return array.reduce((sum, item) => {
+          if (!item) return sum; // Skip null/undefined items
+          const value = keyFn(item);
+          return sum + (isNaN(value) ? 0 : value);
+        }, 0);
+      };
+      
+      // Calculate total distance drilled safely
+      const totalDistanceDrilled = safeReduceSum(standsToCalculate, stand => stand.distanceDrilled || 0);
+      
+      // Calculate weighted average of control drilling percent
+      const weightedControlSum = safeReduceSum(standsToCalculate, 
+        stand => ((stand.controlDrillingPercent || 0) * (stand.distanceDrilled || 0)));
+      
+      const totalControlDrillingPercent = totalDistanceDrilled > 0 ? 
+        (weightedControlSum / totalDistanceDrilled) : 0;
+      
+      // Calculate control distances
+      const drillInControlDistance = totalDistanceDrilled * (totalControlDrillingPercent / 100);
+      
+      // Calculate connection control percentages
+      const totalPreConnectionTime = safeReduceSum(standsToCalculate, stand => stand.preConnectionTime || 0);
+      const totalPreConnectionInControl = safeReduceSum(standsToCalculate, stand => stand.preConnectionInControl || 0);
+      
+      const preConnectionControlPercent = totalPreConnectionTime > 0 
+        ? (totalPreConnectionInControl / totalPreConnectionTime) * 100 
+        : 0;
+      
+      const totalPostConnectionTime = safeReduceSum(standsToCalculate, stand => stand.postConnectionTime || 0);
+      const totalPostConnectionInControl = safeReduceSum(standsToCalculate, stand => stand.postConnectionInControl || 0);
+      
+      const postConnectionControlPercent = totalPostConnectionTime > 0 
+        ? (totalPostConnectionInControl / totalPostConnectionTime) * 100 
+        : 0;
+      
+      // Convert to meters
+      const totalMeters = totalDistanceDrilled * 0.3048; // Convert feet to meters
+      const drillInControlMeters = drillInControlDistance * 0.3048; // Convert feet to meters
+      
+      return {
+        totalDistanceDrilled,
+        totalControlDrillingPercent,
+        drillInControlDistance,
+        preConnectionControlPercent,
+        postConnectionControlPercent,
+        totalMeters,
+        drillInControlMeters
+      };
+    } catch (error) {
+      console.error("Error in calculateDrillingMetrics:", error);
+      return initDrillingMetrics(); // Return default metrics on error
+    }
+  };
+  
+  // Calculate operational limits metrics
+  const calculateOpsLimitsMetrics = (standsToCalculate = filteredStands) => {
+    try {
+      // If no stands or empty array, return zero values
+      if (!standsToCalculate || !Array.isArray(standsToCalculate) || standsToCalculate.length === 0) {
+        return {
+          totalRopMaxCount: 0,
+          totalWobMaxCount: 0,
+          totalTorqueMaxCount: 0,
+          totalRpmMaxCount: 0,
+          totalDiffPMaxCount: 0
+        };
+      }
+      
+      // Calculate total operations limits occurrences
+      const totalRopMaxCount = standsToCalculate.reduce((sum, stand) => 
+        sum + (stand.opsLimitRopMaxCount || 0), 0);
+      
+      const totalWobMaxCount = standsToCalculate.reduce((sum, stand) => 
+        sum + (stand.opsLimitWobMaxCount || 0), 0);
+      
+      const totalTorqueMaxCount = standsToCalculate.reduce((sum, stand) => 
+        sum + (stand.opsLimitTorqueMaxCount || 0), 0);
+      
+      const totalRpmMaxCount = standsToCalculate.reduce((sum, stand) => 
+        sum + (stand.opsLimitRpmMaxCount || 0), 0);
+      
+      const totalDiffPMaxCount = standsToCalculate.reduce((sum, stand) => 
+        sum + (stand.opsLimitDiffPMaxCount || 0), 0);
+      
+      return {
+        totalRopMaxCount,
+        totalWobMaxCount,
+        totalTorqueMaxCount,
+        totalRpmMaxCount,
+        totalDiffPMaxCount
+      };
+    } catch (error) {
+      console.error("Error in calculateOpsLimitsMetrics:", error);
+      return {
+        totalRopMaxCount: 0,
+        totalWobMaxCount: 0,
+        totalTorqueMaxCount: 0,
+        totalRpmMaxCount: 0,
+        totalDiffPMaxCount: 0
+      };
+    }
+  };
+  
+  // Helper function for calculating control percentages
+  const calculateControlPercent = (inControl, outControl) => {
+    const total = inControl + outControl;
+    if (total === 0) return 0;
+    return (inControl / total) * 100;
   };
   
   // Optional: Simulate real-time updates for demonstration
@@ -262,6 +886,31 @@ function Dashboard() {
         rateStability: Math.min(100, Math.max(0, prev.rateStability + (Math.random() - 0.5) * 3))
       }));
       
+      // Occasionally update the connection times
+      if (Math.random() > 0.7) {
+        setConnectionData(prev => ({
+          ...prev,
+          connectionTime: parseFloat((prev.connectionTime + (Math.random() - 0.5) * 5).toFixed(0)),
+          preConnectionTime: parseFloat((prev.preConnectionTime + (Math.random() - 0.5) * 3).toFixed(0)),
+          postConnectionTime: parseFloat((prev.postConnectionTime + (Math.random() - 0.5) * 3).toFixed(0)),
+          preConnectionInControl: parseFloat((prev.preConnectionInControl + (Math.random() - 0.5) * 2).toFixed(0)),
+          preConnectionOutControl: parseFloat((prev.preConnectionOutControl + (Math.random() - 0.5) * 2).toFixed(0)),
+          postConnectionInControl: parseFloat((prev.postConnectionInControl + (Math.random() - 0.5) * 2).toFixed(0)),
+          postConnectionOutControl: parseFloat((prev.postConnectionOutControl + (Math.random() - 0.5) * 2).toFixed(0))
+        }));
+      }
+      
+      // Occasionally update operational limits
+      if (Math.random() > 0.9) {
+        setOpsLimits(prev => ({
+          ...prev,
+          rop: Math.max(0, prev.rop + Math.floor((Math.random() - 0.3) * 2)),
+          wob: Math.max(0, prev.wob + Math.floor((Math.random() - 0.3) * 2)),
+          torque: Math.max(0, prev.torque + Math.floor((Math.random() - 0.3) * 2)),
+          rpm: Math.max(0, prev.rpm + Math.floor((Math.random() - 0.3) * 2)),
+          diffP: Math.max(0, prev.diffP + Math.floor((Math.random() - 0.3) * 2))
+        }));
+      }
     }, 3000);
   };
   
@@ -273,18 +922,331 @@ function Dashboard() {
       }
     };
   }, []);
+
+  // Calculate metrics for display
+  const drillingMetrics = calculateDrillingMetrics();
+  
+  // Calculate ops limits metrics
+  const opsLimitsMetrics = calculateOpsLimitsMetrics();
+
+  // For demo purposes - hardcoded values to match the screenshot
+  const totalDuration = 0.57; // hours
+  const reportDate = "1/4/2025 3:30:09 AM";
   
   return (
     <div className="dashboard">
-      <Header 
-        wellId={wellInfo.wellId} 
-        currentStand={wellInfo.currentStand} 
-        totalDepth={wellInfo.totalDepth}
-        totalStands={wellInfo.totalStands}
-      />
+      <div className="dashboard-grid">
+        {/* Left Column - Well Info and Metrics */}
+        <div className="left-column">
+          <div className="well-section">
+            <div className="well-header">Well</div>
+            <div className="well-value">{wellInfo.wellId}</div>
+          </div>
+          
+          <div className="well-section">
+            <div className="well-header">Section</div>
+            <div className="well-value">{wellInfo.section}</div>
+          </div>
+          
+          {/* KPI Boxes moved from right column */}
+          {hasData && (
+            <>
+              <div className="kpi-box">
+                <div className="kpi-header">Drilling In Control %</div>
+                <div className="kpi-value">{safeToFixed(drillingMetrics?.totalControlDrillingPercent, 2)}</div>
+              </div>
+
+              <div className="kpi-box">
+                <div className="kpi-header">Stands Qty</div>
+                <div className="kpi-value">{filteredStands?.length || 0}</div>
+              </div>
+
+              <div className="kpi-box">
+                <div className="kpi-header">Pre Conn Control %</div>
+                <div className="kpi-value">{safeToFixed(drillingMetrics?.preConnectionControlPercent, 2)}</div>
+              </div>
+
+              <div className="kpi-box">
+                <div className="kpi-header">Post Conn Control %</div>
+                <div className="kpi-value">{safeToFixed(drillingMetrics?.postConnectionControlPercent, 2)}</div>
+              </div>
+
+              <div className="kpi-box">
+                <div className="kpi-header">Total Drilled (m)</div>
+                <div className="kpi-value">{safeToFixed(drillingMetrics?.totalMeters, 2)}</div>
+              </div>
+
+              <div className="kpi-box">
+                <div className="kpi-header">Drill In Control (m)</div>
+                <div className="kpi-value">{safeToFixed(drillingMetrics?.drillInControlMeters, 2)}</div>
+              </div>
+            </>
+          )}
+          
+          {/* Graph Placeholder */}
+          <div className="depth-graph">
+            {/* This would be a depth vs time graph component */}
+          </div>
+        </div>
+        
+        {/* Center Column - Charts and Parameters */}
+        <div className="center-column">
+          <div className="center-header">
+            <div className="report-date-section">
+              <div className="report-header">Report Date and Time</div>
+              <div className="report-value">{reportDate}</div>
+            </div>
+            
+            <div className="duration-section">
+              <div className="duration-header">Total Duration (h)</div>
+              <div className="duration-value">{totalDuration}</div>
+            </div>
+          </div>
+          
+          <div className="time-range-section">
+            <div className="time-range-header">
+              <span>Time Range</span>
+              <span className="dropdown-icon">▼</span>
+            </div>
+            
+            {/* Time Range Preset Buttons */}
+            <div className="time-presets">
+              <button 
+                className={`preset-button ${activePreset === '12h' ? 'active' : ''}`}
+                onClick={() => handleTimePresetChange('12h')}
+              >
+                Last 12h
+              </button>
+              <button 
+                className={`preset-button ${activePreset === '24h' ? 'active' : ''}`}
+                onClick={() => handleTimePresetChange('24h')}
+              >
+                Last 24h
+              </button>
+              <button 
+                className={`preset-button ${activePreset === '7d' ? 'active' : ''}`}
+                onClick={() => handleTimePresetChange('7d')}
+              >
+                Last 7d
+              </button>
+              <button 
+                className={`preset-button ${activePreset === 'all' ? 'active' : ''}`}
+                onClick={() => handleTimePresetChange('all')}
+              >
+                All
+              </button>
+            </div>
+            
+            <div className="time-range-inputs">
+              <div className="time-input-group">
+                <input 
+                  type="date" 
+                  className="time-input" 
+                  value={timeRange.start || ''}
+                  onChange={(e) => handleTimeRangeChange(e, 'start')}
+                />
+                <button className="calendar-button">📅</button>
+              </div>
+              <div className="time-input-group">
+                <input 
+                  type="date" 
+                  className="time-input" 
+                  value={timeRange.end || ''}
+                  onChange={(e) => handleTimeRangeChange(e, 'end')}
+                />
+                <button className="calendar-button">📅</button>
+              </div>
+            </div>
+            <div className="time-range-slider">
+              <div className="slider-track"></div>
+              <div className="slider-handle left"></div>
+              <div className="slider-handle right"></div>
+            </div>
+          </div>
+          
+          {/* Current Drilling Data Panel */}
+          {hasData && (
+            <div className="current-drilling-panel">
+              <div className="panel-header">
+                <h3>Current Drilling Data</h3>
+              </div>
+              <div className="drilling-data-grid">
+                <div className="data-item">
+                  <div className="data-label">WOB (klbs)</div>
+                  <div className="data-value">{safeToFixed(drillingParams?.wob, 2)}</div>
+                </div>
+                <div className="data-item">
+                  <div className="data-label">ROP (ft/hr)</div>
+                  <div className="data-value">{safeToFixed(drillingParams?.rop, 1)}</div>
+                </div>
+                <div className="data-item">
+                  <div className="data-label">RPM</div>
+                  <div className="data-value">{safeToFixed(drillingParams?.rpm, 1)}</div>
+                </div>
+                <div className="data-item">
+                  <div className="data-label">Torque (kft-lbs)</div>
+                  <div className="data-value">{safeToFixed(drillingParams?.torque, 3)}</div>
+                </div>
+                <div className="data-item">
+                  <div className="data-label">Depth (ft)</div>
+                  <div className="data-value">{safeToFixed(drillingParams?.depth, 1)}</div>
+                </div>
+                <div className="data-item">
+                  <div className="data-label">Control %</div>
+                  <div className="data-value">{safeToFixed(drillingParams?.controlDrillingPercent, 1)}</div>
+                </div>
+                <div className="data-item">
+                  <div className="data-label">Pump Pressure (psi)</div>
+                  <div className="data-value">{safeToFixed(drillingParams?.pumpPressure, 0)}</div>
+                </div>
+                <div className="data-item">
+                  <div className="data-label">Flow Rate (gpm)</div>
+                  <div className="data-value">{safeToFixed(drillingParams?.flowRate, 0)}</div>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {/* Parameter Trends - Full Screen */}
+          <div className="parameter-trends-container">
+            {hasData && <ChartPanel chartData={filteredChartData} />}
+          </div>
+        </div>
+        
+        {/* Right Column - Connection KPI and Stand Selector */}
+        <div className="right-column">
+          <div className="slb-logo">
+            {/* SLB Logo */}
+          </div>
+          
+          {/* Stand Selector in right corner */}
+          <div className="stand-selector">
+            <label htmlFor="stand-dropdown">Select Stand:</label>
+            <select 
+              id="stand-dropdown" 
+              className="stand-dropdown"
+              value={selectedStandId || ''}
+              onChange={handleStandDropdownChange}
+            >
+              {filteredStands.map(stand => (
+                <option key={stand.id} value={stand.id}>
+                  Stand {stand.id} - {(stand.distanceDrilled || 0).toFixed(1)} ft
+                </option>
+              ))}
+            </select>
+          </div>
+          
+          {/* Connection KPI Component */}
+          {hasData && (
+            <ConnectionKPI connectionData={connectionData} />
+          )}
+          
+          {/* Selected Stand Details */}
+          {selectedStandId && filteredStands && filteredStands.length > 0 && (
+            <div className="selected-stand-details">
+              <div className="selected-stand-header">Selected Stand Details</div>
+              {(() => {
+                try {
+                  // Find the stand by ID and explicitly check for existence
+                  const selectedStand = filteredStands.find(s => s && s.id === selectedStandId);
+                  
+                  // Bail out early if no stand is found
+                  if (!selectedStand) {
+                    return <div className="no-stand-data">Stand data not available</div>;
+                  }
+                  
+                  // Render the stand details with safe access
+                  return (
+                    <>
+                      <div className="selected-stand-item">
+                        <span className="detail-label">Stand ID:</span>
+                        <span className="detail-value">{selectedStandId}</span>
+                      </div>
+                      <div className="selected-stand-item">
+                        <span className="detail-label">ROP:</span>
+                        <span className="detail-value">
+                          {safeToFixed(selectedStand.rop, 2)} ft/hr
+                        </span>
+                      </div>
+                      <div className="selected-stand-item">
+                        <span className="detail-label">WOB:</span>
+                        <span className="detail-value">
+                          {safeToFixed(selectedStand.wob, 2)} klbs
+                        </span>
+                      </div>
+                      <div className="selected-stand-item">
+                        <span className="detail-label">Control %:</span>
+                        <span className="detail-value">
+                          {safeToFixed(selectedStand.controlDrillingPercent, 1)}%
+                        </span>
+                      </div>
+                      
+                      {/* Add the ops limits details */}
+                      <div className="selected-stand-item">
+                        <span className="detail-label">ROP Limits:</span>
+                        <span className="detail-value">
+                          {selectedStand.opsLimitRopMaxCount || 0}
+                        </span>
+                      </div>
+                      <div className="selected-stand-item">
+                        <span className="detail-label">WOB Limits:</span>
+                        <span className="detail-value">
+                          {selectedStand.opsLimitWobMaxCount || 0}
+                        </span>
+                      </div>
+                      <div className="selected-stand-item">
+                        <span className="detail-label">Torque Limits:</span>
+                        <span className="detail-value">
+                          {selectedStand.opsLimitTorqueMaxCount || 0}
+                        </span>
+                      </div>
+                      <div className="selected-stand-item">
+                        <span className="detail-label">RPM Limits:</span>
+                        <span className="detail-value">
+                          {selectedStand.opsLimitRpmMaxCount || 0}
+                        </span>
+                      </div>
+                      <div className="selected-stand-item">
+                        <span className="detail-label">DiffP Limits:</span>
+                        <span className="detail-value">
+                          {selectedStand.opsLimitDiffPMaxCount || 0}
+                        </span>
+                      </div>
+                    </>
+                  );
+                } catch (error) {
+                  console.error("Error rendering selected stand details:", error);
+                  return <div className="error-message">Error displaying stand details</div>;
+                }
+              })()}
+            </div>
+          )}
+        </div>
+      </div>
       
-      {!hasData ? (
-        <div className="file-upload-container">
+      {/* Time Breakdown Analysis */}
+      {hasData && (
+        <div className="time-breakdown-container">
+          <TimeBreakdownAnalysis stands={filteredStands} />
+        </div>
+      )}
+      
+      {/* Operational Limits Chart */}
+      {hasData && (
+        <div className="ops-limits-container">
+          <OpsLimitsChart stands={filteredStands} />
+        </div>
+      )}
+      
+      {/* Operational Limits Tracker */}
+      {hasData && (
+        <div className="ops-limits-tracker-container">
+          <OpsLimitsTracker stands={filteredStands} timeRange={timeRange} />
+        </div>
+      )}
+      
+      {!hasData && (
+        <div className="file-upload-overlay">
           <FileUpload 
             onFileUpload={handleFileUpload} 
             isLoading={isLoading} 
@@ -292,21 +1254,14 @@ function Dashboard() {
             acceptedFormats=".txt,.csv,.tsv,.xlsx,.xls"
           />
         </div>
-      ) : (
-        <div className="dashboard-content">
-          <StandHistory 
-            stands={stands} 
-            onStandSelect={handleStandSelect} 
-          />
-          
-          <div className="main-content">
-            <ParametersPanel parameters={drillingParams} />
-            <ChartPanel chartData={chartData} />
-          </div>
-        </div>
       )}
     </div>
   );
 }
 
 export default Dashboard;
+
+
+
+
+
