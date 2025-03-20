@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import Header from './Header';
-import ParametersPanel from './ParametersPanel';
+// import Header from './Header';
+// import ParametersPanel from './ParametersPanel';
 import OpsLimitsTracker from './OpsLimitsTracker';
 import ChartPanel from './ChartPanel';
 import TimeBreakdownAnalysis from './TimeBreakdownAnalysis';
