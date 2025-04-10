@@ -187,18 +187,6 @@ function ChartPanel({ chartData }) {
           },
           null // No second chart for combo view
         ];
-      case 'depth':
-        return [
-          {
-            data: chartData.depth,
-            options: getDepthChartOptions(),
-            color: '#9334e8',
-            title: 'Depth vs Stand (ft)',
-            type: 'line'
-            // No limits for depth
-          },
-          null // No second chart for depth view
-        ];
       case 'connection':
         return [
           {
@@ -1013,745 +1001,738 @@ function ChartPanel({ chartData }) {
     return options;
   };
   
-  // New function for combined chart with ROP, WOB, RPM, and Torque with limits
-  const getCombinedChartOptions = () => {
-    const ropStats = getStats(chartData.rop.data);
-    const wobStats = getStats(chartData.wob.data);
-    const rpmStats = getStats(chartData.rpm.data);
-    const torqueStats = getStats(chartData.torque.data);
-    
-    // Calculate y-axis max for each parameter to ensure proper scaling
-    const ropMax = Math.max(400, ropStats.max * 1.1);
-    const wobMax = Math.max(30, wobStats.max * 1.1);
-    const rpmMax = Math.max(200, rpmStats.max * 1.1);
-    const torqueMax = Math.max(10, torqueStats.max * 1.1);
-    
-    const options = {
-      responsive: true,
-      maintainAspectRatio: false,
-      interaction: {
-        mode: 'index',
-        intersect: false
+// New function for combined chart with ROP, WOB, RPM, and Torque with limits
+const getCombinedChartOptions = () => {
+  const ropStats = getStats(chartData.rop.data);
+  const wobStats = getStats(chartData.wob.data);
+  const rpmStats = getStats(chartData.rpm.data);
+  const torqueStats = getStats(chartData.torque.data);
+  
+  // Calculate y-axis max for each parameter to ensure proper scaling
+  const ropMax = Math.max(400, ropStats.max * 1.1);
+  const wobMax = Math.max(30, wobStats.max * 1.1);
+  const rpmMax = Math.max(200, rpmStats.max * 1.1);
+  const torqueMax = Math.max(10, torqueStats.max * 1.1);
+  
+  const options = {
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: {
+      mode: 'index',
+      intersect: false
+    },
+    plugins: {
+      title: {
+        display: true,
+        text: 'Combined Drilling Parameters'
       },
-      plugins: {
-        title: {
-          display: true,
-          text: 'Combined Drilling Parameters'
-        },
-        legend: {
-          display: true,
-          position: 'top'
-        },
-        tooltip: {
-          callbacks: {
-            label: (context) => {
-              let label = '';
-              const value = context.parsed.y;
-              
-              switch(context.datasetIndex) {
-                case 0:
-                  label = `ROP: ${value.toFixed(1)} ft/hr`;
-                  break;
-                case 1:
-                  label = `WOB: ${value.toFixed(2)} klbs`;
-                  break;
-                case 2:
-                  label = `RPM: ${value.toFixed(1)}`;
-                  break;
-                case 3:
-                  label = `Torque: ${value.toFixed(3)} klbf-ft`;
-                  break;
-                default:
-                  label = `Value: ${value}`;
-              }
-              return label;
+      legend: {
+        display: true,
+        position: 'top'
+      },
+      tooltip: {
+        callbacks: {
+          label: (context) => {
+            let label = '';
+            const value = context.parsed.y;
+            
+            switch(context.datasetIndex) {
+              case 0:
+                label = `ROP: ${value.toFixed(1)} ft/hr`;
+                break;
+              case 1:
+                label = `WOB: ${value.toFixed(2)} klbs`;
+                break;
+              case 2:
+                label = `RPM: ${value.toFixed(1)}`;
+                break;
+              case 3:
+                label = `Torque: ${value.toFixed(3)} klbf-ft`;
+                break;
+              default:
+                label = `Value: ${value}`;
             }
+            return label;
           }
-        },
-        annotation: {
-          annotations: {}
         }
       },
-      scales: {
-        y: {
-          type: 'linear',
+      annotation: {
+        annotations: {}
+      }
+    },
+    scales: {
+      y: {
+        type: 'linear',
+        display: true,
+        position: 'left',
+        beginAtZero: false,
+        title: {
           display: true,
-          position: 'left',
-          beginAtZero: false,
-          title: {
+          text: 'ROP (ft/hr)'
+        },
+        min: 0,
+        max: ropMax,
+        ticks: {
+          callback: function(value) {
+            return value + ' ft/hr';
+          }
+        }
+      },
+      y1: {
+        type: 'linear',
+        display: true,
+        position: 'right',
+        beginAtZero: false,
+        title: {
+          display: true,
+          text: 'WOB (klbs)'
+        },
+        min: 0,
+        max: wobMax,
+        grid: {
+          drawOnChartArea: false
+        },
+        ticks: {
+          callback: function(value) {
+            return value + ' klbs';
+          }
+        }
+      },
+      y2: {
+        type: 'linear',
+        display: true,
+        position: 'right',
+        beginAtZero: false,
+        title: {
+          display: true,
+          text: 'RPM'
+        },
+        min: 0,
+        max: rpmMax,
+        grid: {
+          drawOnChartArea: false
+        },
+        ticks: {
+          callback: function(value) {
+            return value;
+          }
+        }
+      },
+      y3: {
+        type: 'linear',
+        display: true,
+        position: 'right',
+        beginAtZero: false,
+        title: {
+          display: true,
+          text: 'Torque (klbf-ft)'
+        },
+        min: 0,
+        max: torqueMax,
+        grid: {
+          drawOnChartArea: false
+        },
+        ticks: {
+          callback: function(value) {
+            return value + ' klbf-ft';
+          }
+        }
+      },
+      x: {
+        title: {
+          display: true,
+          text: 'Stand Number'
+        }
+      }
+    }
+  };
+  // Add operational limits as annotations if enabled
+  if (showLimits) {
+    options.plugins.annotation = {
+      annotations: {
+        // ROP limits
+        ropMaxLimit: {
+          type: 'line',
+          yMin: operationalLimits.rop.max,
+          yMax: operationalLimits.rop.max,
+          borderColor: 'rgba(255, 204, 0, 0.7)',
+          borderWidth: 2,
+          borderDash: [6, 6],
+          yScaleID: 'y',
+          label: {
             display: true,
-            text: 'ROP (ft/hr)'
-          },
-          min: 0,
-          max: ropMax,
-          ticks: {
-            callback: function(value) {
-              return value + ' ft/hr';
+            content: 'ROP Max',
+            position: 'start',
+            backgroundColor: 'rgba(255, 204, 0, 0.8)',
+            font: {
+              size: 10
             }
           }
         },
-        y1: {
-          type: 'linear',
-          display: true,
-          position: 'right',
-          beginAtZero: false,
-          title: {
+        // WOB limits
+        wobMaxLimit: {
+          type: 'line',
+          yMin: operationalLimits.wob.max,
+          yMax: operationalLimits.wob.max,
+          borderColor: 'rgba(255, 204, 0, 0.7)',
+          borderWidth: 2,
+          borderDash: [6, 6],
+          yScaleID: 'y1',
+          label: {
             display: true,
-            text: 'WOB (klbs)'
-          },
-          min: 0,
-          max: wobMax,
-          grid: {
-            drawOnChartArea: false
-          },
-          ticks: {
-            callback: function(value) {
-              return value + ' klbs';
+            content: 'WOB Max',
+            position: 'start',
+            backgroundColor: 'rgba(255, 204, 0, 0.8)',
+            font: {
+              size: 10
             }
           }
         },
-        y2: {
-          type: 'linear',
-          display: true,
-          position: 'right',
-          beginAtZero: false,
-          title: {
+        // RPM limits
+        rpmMaxLimit: {
+          type: 'line',
+          yMin: operationalLimits.rpm.max,
+          yMax: operationalLimits.rpm.max,
+          borderColor: 'rgba(255, 204, 0, 0.7)',
+          borderWidth: 2,
+          borderDash: [6, 6],
+          yScaleID: 'y2',
+          label: {
             display: true,
-            text: 'RPM'
-          },
-          min: 0,
-          max: rpmMax,
-          grid: {
-            drawOnChartArea: false
-          },
-          ticks: {
-            callback: function(value) {
-              return value;
+            content: 'RPM Max',
+            position: 'start',
+            backgroundColor: 'rgba(255, 204, 0, 0.8)',
+            font: {
+              size: 10
             }
           }
         },
-        y3: {
-          type: 'linear',
-          display: true,
-          position: 'right',
-          beginAtZero: false,
-          title: {
+        // Torque limits
+        torqueMaxLimit: {
+          type: 'line',
+          yMin: operationalLimits.torque.max,
+          yMax: operationalLimits.torque.max,
+          borderColor: 'rgba(255, 204, 0, 0.7)',
+          borderWidth: 2,
+          borderDash: [6, 6],
+          yScaleID: 'y3',
+          label: {
             display: true,
-            text: 'Torque (klbf-ft)'
-          },
-          min: 0,
-          max: torqueMax,
-          grid: {
-            drawOnChartArea: false
-          },
-          ticks: {
-            callback: function(value) {
-              return value + ' klbf-ft';
+            content: 'Torque Max',
+            position: 'start',
+            backgroundColor: 'rgba(255, 204, 0, 0.8)',
+            font: {
+              size: 10
             }
-          }
-        },
-        x: {
-          title: {
-            display: true,
-            text: 'Stand Number'
           }
         }
       }
     };
-    // Add operational limits as annotations if enabled
-    if (showLimits) {
-      options.plugins.annotation = {
-        annotations: {
-          // ROP limits
-          ropMaxLimit: {
-            type: 'line',
-            yMin: operationalLimits.rop.max,
-            yMax: operationalLimits.rop.max,
-            borderColor: 'rgba(255, 204, 0, 0.7)',
-            borderWidth: 2,
-            borderDash: [6, 6],
-            yScaleID: 'y',
-            label: {
-              display: true,
-              content: 'ROP Max',
-              position: 'start',
-              backgroundColor: 'rgba(255, 204, 0, 0.8)',
-              font: {
-                size: 10
-              }
-            }
-          },
-          // WOB limits
-          wobMaxLimit: {
-            type: 'line',
-            yMin: operationalLimits.wob.max,
-            yMax: operationalLimits.wob.max,
-            borderColor: 'rgba(255, 204, 0, 0.7)',
-            borderWidth: 2,
-            borderDash: [6, 6],
-            yScaleID: 'y1',
-            label: {
-              display: true,
-              content: 'WOB Max',
-              position: 'start',
-              backgroundColor: 'rgba(255, 204, 0, 0.8)',
-              font: {
-                size: 10
-              }
-            }
-          },
-          // RPM limits
-          rpmMaxLimit: {
-            type: 'line',
-            yMin: operationalLimits.rpm.max,
-            yMax: operationalLimits.rpm.max,
-            borderColor: 'rgba(255, 204, 0, 0.7)',
-            borderWidth: 2,
-            borderDash: [6, 6],
-            yScaleID: 'y2',
-            label: {
-              display: true,
-              content: 'RPM Max',
-              position: 'start',
-              backgroundColor: 'rgba(255, 204, 0, 0.8)',
-              font: {
-                size: 10
-              }
-            }
-          },
-          // Torque limits
-          torqueMaxLimit: {
-            type: 'line',
-            yMin: operationalLimits.torque.max,
-            yMax: operationalLimits.torque.max,
-            borderColor: 'rgba(255, 204, 0, 0.7)',
-            borderWidth: 2,
-            borderDash: [6, 6],
-            yScaleID: 'y3',
-            label: {
-              display: true,
-              content: 'Torque Max',
-              position: 'start',
-              backgroundColor: 'rgba(255, 204, 0, 0.8)',
-              font: {
-                size: 10
-              }
-            }
-          }
+  }
+  
+  return options;
+};
+
+// Helper function to determine bar color based on control percentage
+const getBarColors = (controlData) => {
+  if (!controlData || !controlData.data) return [];
+  
+  return controlData.data.map(value => {
+    if (value >= 80) return 'rgba(52, 168, 83, 0.7)'; // Green for high control
+    if (value >= 60) return 'rgba(66, 133, 244, 0.7)'; // Blue for good control
+    if (value >= 40) return 'rgba(251, 188, 4, 0.7)'; // Yellow for fair control
+    return 'rgba(234, 67, 53, 0.7)'; // Red for poor control
+  });
+};
+
+// Helper function to determine connection time bar colors
+const getConnectionTimeColors = (connectionTimeData) => {
+  if (!connectionTimeData || !connectionTimeData.data) return [];
+  
+  return connectionTimeData.data.map(value => {
+    if (value < 180) return 'rgba(52, 168, 83, 0.7)'; // Green for short connections (<3 min)
+    if (value < 300) return 'rgba(66, 133, 244, 0.7)'; // Blue for normal connections (<5 min)
+    if (value < 420) return 'rgba(251, 188, 4, 0.7)'; // Yellow for longer connections (<7 min)
+    return 'rgba(234, 67, 53, 0.7)'; // Red for long connections (>7 min)
+  });
+};
+
+// Color constants for different parameters
+const CHART_COLORS = {
+  rop: 'rgba(26, 115, 232, 0.8)', // Blue
+  wob: 'rgba(52, 168, 83, 0.8)',  // Green
+  rpm: 'rgba(251, 188, 4, 0.8)',  // Yellow
+  torque: 'rgba(234, 67, 53, 0.8)', // Red
+  preConnection: 'rgba(66, 133, 244, 0.7)', // Blue
+  postConnection: 'rgba(153, 52, 232, 0.7)', // Purple
+  connection: 'rgba(251, 188, 4, 0.7)', // Yellow
+};
+
+// Create config for line chart
+const createLineChartConfig = (chartInfo) => {
+  return {
+    labels: chartInfo.data.labels || [],
+    datasets: [{
+      label: chartInfo.title,
+      data: chartInfo.data.data || [],
+      borderColor: chartInfo.color,
+      backgroundColor: `${chartInfo.color}20`, // Color with 20% opacity
+      borderWidth: 2,
+      pointRadius: 2,
+      pointHoverRadius: 5,
+      fill: true,
+      tension: 0.2
+    }]
+  };
+};
+
+// Create config for bar chart
+const createBarChartConfig = (chartInfo) => {
+  if (chartInfo.type === 'connection') {
+    return {
+      labels: chartInfo.data.connectionTime.labels || [],
+      datasets: [
+        {
+          label: 'Total Connection Time',
+          data: chartInfo.data.connectionTime.data || [],
+          backgroundColor: CHART_COLORS.connection,
+          borderColor: CHART_COLORS.connection,
+          borderWidth: 1,
+          order: 1
+        },
+        {
+          label: 'Pre-Connection Time',
+          data: chartInfo.data.preConnectionTime.data || [],
+          backgroundColor: CHART_COLORS.preConnection,
+          borderColor: CHART_COLORS.preConnection,
+          borderWidth: 1,
+          type: 'bar',
+          order: 2
+        },
+        {
+          label: 'Post-Connection Time',
+          data: chartInfo.data.postConnectionTime.data || [],
+          backgroundColor: CHART_COLORS.postConnection,
+          borderColor: CHART_COLORS.postConnection,
+          borderWidth: 1,
+          type: 'bar',
+          order: 3
         }
-      };
-    }
-    
-    return options;
-  };
-  
-  // Helper function to determine bar color based on control percentage
-  const getBarColors = (controlData) => {
-    if (!controlData || !controlData.data) return [];
-    
-    return controlData.data.map(value => {
-      if (value >= 80) return 'rgba(52, 168, 83, 0.7)'; // Green for high control
-      if (value >= 60) return 'rgba(66, 133, 244, 0.7)'; // Blue for good control
-      if (value >= 40) return 'rgba(251, 188, 4, 0.7)'; // Yellow for fair control
-      return 'rgba(234, 67, 53, 0.7)'; // Red for poor control
-    });
-  };
-  
-  // Helper function to determine connection time bar colors
-  const getConnectionTimeColors = (connectionTimeData) => {
-    if (!connectionTimeData || !connectionTimeData.data) return [];
-    
-    return connectionTimeData.data.map(value => {
-      if (value < 180) return 'rgba(52, 168, 83, 0.7)'; // Green for short connections (<3 min)
-      if (value < 300) return 'rgba(66, 133, 244, 0.7)'; // Blue for normal connections (<5 min)
-      if (value < 420) return 'rgba(251, 188, 4, 0.7)'; // Yellow for longer connections (<7 min)
-      return 'rgba(234, 67, 53, 0.7)'; // Red for long connections (>7 min)
-    });
-  };
-  
-  // Color constants for different parameters
-  const CHART_COLORS = {
-    rop: 'rgba(26, 115, 232, 0.8)', // Blue
-    wob: 'rgba(52, 168, 83, 0.8)',  // Green
-    rpm: 'rgba(251, 188, 4, 0.8)',  // Yellow
-    torque: 'rgba(234, 67, 53, 0.8)', // Red
-    preConnection: 'rgba(66, 133, 244, 0.7)', // Blue
-    postConnection: 'rgba(153, 52, 232, 0.7)', // Purple
-    connection: 'rgba(251, 188, 4, 0.7)', // Yellow
-  };
-  
-  // Create config for line chart
-  const createLineChartConfig = (chartInfo) => {
+      ]
+    };
+  } else {
     return {
       labels: chartInfo.data.labels || [],
       datasets: [{
         label: chartInfo.title,
         data: chartInfo.data.data || [],
+        backgroundColor: getBarColors(chartInfo.data),
         borderColor: chartInfo.color,
-        backgroundColor: `${chartInfo.color}20`, // Color with 20% opacity
+        borderWidth: 1
+      }]
+    };
+  }
+};
+
+// Create config for combo chart showing ROP behind Control Drilling %
+const createComboChartConfig = (chartInfo) => {
+  return {
+    labels: chartInfo.data.controlPercent.labels || [],
+    datasets: [
+      // ROP Line (dataset index 0)
+      {
+        type: 'line',
+        label: 'Rate of Penetration (ft/hr)',
+        data: chartInfo.data.rop.data || [],
+        borderColor: '#1a73e8',
+        backgroundColor: 'rgba(26, 115, 232, 0.1)',
         borderWidth: 2,
         pointRadius: 2,
         pointHoverRadius: 5,
-        fill: true,
-        tension: 0.2
-      }]
-    };
+        fill: false,
+        tension: 0.2,
+        yAxisID: 'y', // Use the right y-axis (ROP)
+        order: 2, // Lower order means it's drawn later (on top)
+      },
+      // Control Drilling Bars (dataset index 1)
+      {
+        type: 'bar',
+        label: 'Control Drilling (%)',
+        data: chartInfo.data.controlPercent.data || [],
+        backgroundColor: getBarColors(chartInfo.data.controlPercent),
+        borderColor: 'rgba(0,0,0,0.1)',
+        borderWidth: 1,
+        yAxisID: 'y1', // Use the left y-axis (Control %)
+        order: 1, // Higher order means it's drawn first (behind)
+      }
+    ]
   };
-  
-  // Create config for bar chart
-  const createBarChartConfig = (chartInfo) => {
-    if (chartInfo.type === 'connection') {
-      return {
-        labels: chartInfo.data.connectionTime.labels || [],
-        datasets: [
-          {
-            label: 'Total Connection Time',
-            data: chartInfo.data.connectionTime.data || [],
-            backgroundColor: CHART_COLORS.connection,
-            borderColor: CHART_COLORS.connection,
-            borderWidth: 1,
-            order: 1
-          },
-          {
-            label: 'Pre-Connection Time',
-            data: chartInfo.data.preConnectionTime.data || [],
-            backgroundColor: CHART_COLORS.preConnection,
-            borderColor: CHART_COLORS.preConnection,
-            borderWidth: 1,
-            type: 'bar',
-            order: 2
-          },
-          {
-            label: 'Post-Connection Time',
-            data: chartInfo.data.postConnectionTime.data || [],
-            backgroundColor: CHART_COLORS.postConnection,
-            borderColor: CHART_COLORS.postConnection,
-            borderWidth: 1,
-            type: 'bar',
-            order: 3
-          }
-        ]
-      };
-    } else {
-      return {
-        labels: chartInfo.data.labels || [],
-        datasets: [{
-          label: chartInfo.title,
-          data: chartInfo.data.data || [],
-          backgroundColor: getBarColors(chartInfo.data),
-          borderColor: chartInfo.color,
-          borderWidth: 1
-        }]
-      };
-    }
-  };
-  
-  // Create config for combo chart showing ROP behind Control Drilling %
-  const createComboChartConfig = (chartInfo) => {
-    return {
-      labels: chartInfo.data.controlPercent.labels || [],
-      datasets: [
-        // ROP Line (dataset index 0)
-        {
-          type: 'line',
-          label: 'Rate of Penetration (ft/hr)',
-          data: chartInfo.data.rop.data || [],
-          borderColor: '#1a73e8',
-          backgroundColor: 'rgba(26, 115, 232, 0.1)',
-          borderWidth: 2,
-          pointRadius: 2,
-          pointHoverRadius: 5,
-          fill: false,
-          tension: 0.2,
-          yAxisID: 'y', // Use the right y-axis (ROP)
-          order: 2, // Lower order means it's drawn later (on top)
-        },
-        // Control Drilling Bars (dataset index 1)
-        {
-          type: 'bar',
-          label: 'Control Drilling (%)',
-          data: chartInfo.data.controlPercent.data || [],
-          backgroundColor: getBarColors(chartInfo.data.controlPercent),
-          borderColor: 'rgba(0,0,0,0.1)',
-          borderWidth: 1,
-          yAxisID: 'y1', // Use the left y-axis (Control %)
-          order: 1, // Higher order means it's drawn first (behind)
-        }
-      ]
-    };
-  };
-  
-  // Create config for combined chart with ROP, WOB, RPM, and Torque
-  const createCombinedChartConfig = (chartInfo) => {
-    return {
-      labels: chartInfo.data.rop.labels || [],
-      datasets: [
-        {
-          label: 'ROP (ft/hr)',
-          data: chartInfo.data.rop.data || [],
-          borderColor: CHART_COLORS.rop,
-          backgroundColor: CHART_COLORS.rop + '20', // 20% opacity
-          borderWidth: 3,
-          yAxisID: 'y',
-          tension: 0.2
-        },
-        {
-          label: 'WOB (klbs)',
-          data: chartInfo.data.wob.data || [],
-          borderColor: CHART_COLORS.wob,
-          backgroundColor: CHART_COLORS.wob + '20', // 20% opacity
-          borderWidth: 3,
-          yAxisID: 'y1',
-          tension: 0.2
-        },
-        {
-          label: 'RPM',
-          data: chartInfo.data.rpm.data || [],
-          borderColor: CHART_COLORS.rpm,
-          backgroundColor: CHART_COLORS.rpm + '20', // 20% opacity
-          borderWidth: 3,
-          yAxisID: 'y2',
-          tension: 0.2
-        },
-        {
-          label: 'Torque (klbf-ft)',
-          data: chartInfo.data.torque.data || [],
-          borderColor: CHART_COLORS.torque,
-          backgroundColor: CHART_COLORS.torque + '20', // 20% opacity
-          borderWidth: 3,
-          yAxisID: 'y3',
-          tension: 0.2
-        }
-      ]
-    };
-  };
+};
 
-  // Create config for connection control vs manual chart
-  const createConnectionControlChartConfig = (chartInfo) => {
-    return {
-      labels: chartInfo.data.labels || [],
-      datasets: [
-        {
-          label: 'Pre-Connection Control',
-          data: chartInfo.data.preConnectionControl || [],
-          backgroundColor: 'rgba(52, 168, 83, 0.7)', // Green for control
-          borderColor: 'rgba(52, 168, 83, 1)',
-          borderWidth: 1,
-          type: 'bar'
-        },
-        {
-          label: 'Pre-Connection Manual',
-          data: chartInfo.data.preConnectionManual || [],
-          backgroundColor: 'rgba(251, 188, 4, 0.7)', // Yellow for manual
-          borderColor: 'rgba(251, 188, 4, 1)',
-          borderWidth: 1,
-          type: 'bar'
-        },
-        {
-          label: 'Post-Connection Control',
-          data: chartInfo.data.postConnectionControl || [],
-          backgroundColor: 'rgba(66, 133, 244, 0.7)', // Blue for control
-          borderColor: 'rgba(66, 133, 244, 1)',
-          borderWidth: 1,
-          type: 'bar'
-        },
-        {
-          label: 'Post-Connection Manual',
-          data: chartInfo.data.postConnectionManual || [],
-          backgroundColor: 'rgba(234, 67, 53, 0.7)', // Red for manual
-          borderColor: 'rgba(234, 67, 53, 1)',
-          borderWidth: 1,
-          type: 'bar'
-        }
-      ]
-    };
+// Create config for combined chart with ROP, WOB, RPM, and Torque
+const createCombinedChartConfig = (chartInfo) => {
+  return {
+    labels: chartInfo.data.rop.labels || [],
+    datasets: [
+      {
+        label: 'ROP (ft/hr)',
+        data: chartInfo.data.rop.data || [],
+        borderColor: CHART_COLORS.rop,
+        backgroundColor: CHART_COLORS.rop + '20', // 20% opacity
+        borderWidth: 3,
+        yAxisID: 'y',
+        tension: 0.2
+      },
+      {
+        label: 'WOB (klbs)',
+        data: chartInfo.data.wob.data || [],
+        borderColor: CHART_COLORS.wob,
+        backgroundColor: CHART_COLORS.wob + '20', // 20% opacity
+        borderWidth: 3,
+        yAxisID: 'y1',
+        tension: 0.2
+      },
+      {
+        label: 'RPM',
+        data: chartInfo.data.rpm.data || [],
+        borderColor: CHART_COLORS.rpm,
+        backgroundColor: CHART_COLORS.rpm + '20', // 20% opacity
+        borderWidth: 3,
+        yAxisID: 'y2',
+        tension: 0.2
+      },
+      {
+        label: 'Torque (klbf-ft)',
+        data: chartInfo.data.torque.data || [],
+        borderColor: CHART_COLORS.torque,
+        backgroundColor: CHART_COLORS.torque + '20', // 20% opacity
+        borderWidth: 3,
+        yAxisID: 'y3',
+        tension: 0.2
+      }
+    ]
   };
-  
-  // New chart configuration for Connection Control vs Manual trend
-  const getConnectionControlOptions = () => {
-    return {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        title: {
-          display: true,
-          text: 'Connection Control vs Manual Time Trends'
-        },
-        legend: {
-          display: true,
-          position: 'top'
-        },
-        tooltip: {
-          callbacks: {
-            label: (context) => {
-              const seconds = context.parsed.y;
-              const mins = Math.floor(seconds / 60);
-              const secs = Math.floor(seconds % 60);
-              const formattedTime = `${mins}:${secs.toString().padStart(2, '0')}`;
-              
-              switch(context.datasetIndex) {
-                case 0:
-                  return `Pre-Connection Control: ${formattedTime}`;
-                case 1:
-                  return `Pre-Connection Manual: ${formattedTime}`;
-                case 2:
-                  return `Post-Connection Control: ${formattedTime}`;
-                case 3:
-                  return `Post-Connection Manual: ${formattedTime}`;
-                default:
-                  return `Time: ${formattedTime}`;
-              }
+};
+
+// Create config for connection control vs manual chart
+const createConnectionControlChartConfig = (chartInfo) => {
+  return {
+    labels: chartInfo.data.labels || [],
+    datasets: [
+      {
+        label: 'Pre-Connection Control',
+        data: chartInfo.data.preConnectionControl || [],
+        backgroundColor: 'rgba(52, 168, 83, 0.7)', // Green for control
+        borderColor: 'rgba(52, 168, 83, 1)',
+        borderWidth: 1,
+        type: 'bar'
+      },
+      {
+        label: 'Pre-Connection Manual',
+        data: chartInfo.data.preConnectionManual || [],
+        backgroundColor: 'rgba(251, 188, 4, 0.7)', // Yellow for manual
+        borderColor: 'rgba(251, 188, 4, 1)',
+        borderWidth: 1,
+        type: 'bar'
+      },
+      {
+        label: 'Post-Connection Control',
+        data: chartInfo.data.postConnectionControl || [],
+        backgroundColor: 'rgba(66, 133, 244, 0.7)', // Blue for control
+        borderColor: 'rgba(66, 133, 244, 1)',
+        borderWidth: 1,
+        type: 'bar'
+      },
+      {
+        label: 'Post-Connection Manual',
+        data: chartInfo.data.postConnectionManual || [],
+        backgroundColor: 'rgba(234, 67, 53, 0.7)', // Red for manual
+        borderColor: 'rgba(234, 67, 53, 1)',
+        borderWidth: 1,
+        type: 'bar'
+      }
+    ]
+  };
+};
+
+// New chart configuration for Connection Control vs Manual trend
+const getConnectionControlOptions = () => {
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      title: {
+        display: true,
+        text: 'Connection Control vs Manual Time Trends'
+      },
+      legend: {
+        display: true,
+        position: 'top'
+      },
+      tooltip: {
+        callbacks: {
+          label: (context) => {
+            const seconds = context.parsed.y;
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            const formattedTime = `${mins}:${secs.toString().padStart(2, '0')}`;
+            
+            switch(context.datasetIndex) {
+              case 0:
+                return `Pre-Connection Control: ${formattedTime}`;
+              case 1:
+                return `Pre-Connection Manual: ${formattedTime}`;
+              case 2:
+                return `Post-Connection Control: ${formattedTime}`;
+              case 3:
+                return `Post-Connection Manual: ${formattedTime}`;
+              default:
+                return `Time: ${formattedTime}`;
             }
           }
         }
-      },
-      scales: {
-        y: {
-          beginAtZero: true,
-          title: {
-            display: true,
-            text: 'Time (seconds)'
-          },
-          stacked: false
+      }
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+        title: {
+          display: true,
+          text: 'Time (seconds)'
         },
-        x: {
-          title: {
-            display: true,
-            text: 'Stand Number'
-          }
+        stacked: false
+      },
+      x: {
+        title: {
+          display: true,
+          text: 'Stand Number'
         }
       }
-    };
-  };
-
-  // Convert chart data to ChartJS format based on chart type
-  const createChartConfig = (chartInfo) => {
-    if (!chartInfo || !chartInfo.data) return null;
-    
-    if (chartInfo.type === 'bar') {
-      return createBarChartConfig(chartInfo);
-    } else if (chartInfo.type === 'combo') {
-      return createComboChartConfig(chartInfo);
-    } else if (chartInfo.type === 'combined') {
-      return createCombinedChartConfig(chartInfo);
-    } else if (chartInfo.type === 'connection') {
-      return createBarChartConfig(chartInfo);
-    } else if (chartInfo.type === 'connection-control') {
-      return createConnectionControlChartConfig(chartInfo);
-    } else {
-      return createLineChartConfig(chartInfo);
     }
   };
+};
+
+// Convert chart data to ChartJS format based on chart type
+const createChartConfig = (chartInfo) => {
+  if (!chartInfo || !chartInfo.data) return null;
   
-  const visibleCharts = getVisibleCharts();
-  
-  return (
-    <div className="chart-panel">
-      <div className="panel-header">
-        <h3>Parameter Trends</h3>
-        <div className="chart-controls">
-          <div className="chart-tabs">
-            <button 
-              className={`chart-tab ${activeTab === 'combined' ? 'active' : ''}`}
-              onClick={() => setActiveTab('combined')}
-            >
-              Combined
-            </button>
-            <button 
-              className={`chart-tab ${activeTab === 'rop-wob' ? 'active' : ''}`}
-              onClick={() => setActiveTab('rop-wob')}
-            >
-              ROP & WOB
-            </button>
-            <button 
-              className={`chart-tab ${activeTab === 'rpm-torque' ? 'active' : ''}`}
-              onClick={() => setActiveTab('rpm-torque')}
-            >
-              RPM & Torque
-            </button>
-            <button 
-              className={`chart-tab ${activeTab === 'control' ? 'active' : ''}`}
-              onClick={() => setActiveTab('control')}
-            >
-              Control %
-            </button>
-            <button 
-              className={`chart-tab ${activeTab === 'depth' ? 'active' : ''}`}
-              onClick={() => setActiveTab('depth')}
-            >
-              Depth
-            </button>
-            <button 
-className={`chart-tab ${activeTab === 'connection' ? 'active' : ''}`}
-onClick={() => setActiveTab('connection')}
->
-Connection
-</button>
-<button 
-className={`chart-tab ${activeTab === 'connection-control' ? 'active' : ''}`}
-onClick={() => setActiveTab('connection-control')}
->
-Conn Control
-</button>
-</div>
-<div className="limit-toggle">
-<label className="limit-toggle-label">
-<input 
-  type="checkbox" 
-  checked={showLimits} 
-  onChange={() => setShowLimits(!showLimits)} 
-/>
-Show Operational Limits
-</label>
-</div>
-</div>
-</div>
+  if (chartInfo.type === 'bar') {
+    return createBarChartConfig(chartInfo);
+  } else if (chartInfo.type === 'combo') {
+    return createComboChartConfig(chartInfo);
+  } else if (chartInfo.type === 'combined') {
+    return createCombinedChartConfig(chartInfo);
+  } else if (chartInfo.type === 'connection') {
+    return createBarChartConfig(chartInfo);
+  } else if (chartInfo.type === 'connection-control') {
+    return createConnectionControlChartConfig(chartInfo);
+  } else {
+    return createLineChartConfig(chartInfo);
+  }
+};
 
-<div className={`chart-container ${activeTab === 'depth' || activeTab === 'control' || activeTab === 'connection' || activeTab === 'combined' || activeTab === 'connection-control' ? 'single-chart' : ''}`}>
-<div className={`chart ${(activeTab === 'control' || activeTab === 'connection' || activeTab === 'combined' || activeTab === 'connection-control') ? 'full-width' : ''}`}>
-{visibleCharts[0] && visibleCharts[0].data && (
-visibleCharts[0].type === 'bar' ? (
-<Bar 
-  data={createChartConfig(visibleCharts[0])} 
-  options={visibleCharts[0].options} 
-/>
-) : visibleCharts[0].type === 'combo' ? (
-<Chart 
-  data={createChartConfig(visibleCharts[0])} 
-  options={visibleCharts[0].options} 
-/>
-) : visibleCharts[0].type === 'combined' ? (
-<Line 
-  data={createChartConfig(visibleCharts[0])} 
-  options={visibleCharts[0].options} 
-/>
-) : visibleCharts[0].type === 'connection' ? (
-<Bar 
-  data={createChartConfig(visibleCharts[0])} 
-  options={visibleCharts[0].options} 
-/>
-) : visibleCharts[0].type === 'connection-control' ? (
-<Bar 
-  data={createChartConfig(visibleCharts[0])} 
-  options={visibleCharts[0].options} 
-/>
-) : (
-<Line 
-  data={createChartConfig(visibleCharts[0])} 
-  options={visibleCharts[0].options} 
-/>
-)
-)}
-</div>
+const visibleCharts = getVisibleCharts();
 
-{activeTab !== 'depth' && activeTab !== 'control' && activeTab !== 'connection' && activeTab !== 'combined' && activeTab !== 'connection-control' && visibleCharts[1] && (
-<div className="chart">
-{visibleCharts[1].data && (
-visibleCharts[1].type === 'bar' ? (
-  <Bar 
-    data={createChartConfig(visibleCharts[1])} 
-    options={visibleCharts[1].options} 
-  />
-) : (
-  <Line 
-    data={createChartConfig(visibleCharts[1])} 
-    options={visibleCharts[1].options} 
-  />
-)
-)}
-</div>
-)}
-</div>
+return (
+  <div className="chart-panel">
+    <div className="panel-header">
+      <h3>Parameter Trends</h3>
+      <div className="chart-controls">
+        <div className="chart-tabs">
+          <button 
+            className={`chart-tab ${activeTab === 'combined' ? 'active' : ''}`}
+            onClick={() => setActiveTab('combined')}
+          >
+            Combined
+          </button>
+          <button 
+            className={`chart-tab ${activeTab === 'rop-wob' ? 'active' : ''}`}
+            onClick={() => setActiveTab('rop-wob')}
+          >
+            ROP & WOB
+          </button>
+          <button 
+            className={`chart-tab ${activeTab === 'rpm-torque' ? 'active' : ''}`}
+            onClick={() => setActiveTab('rpm-torque')}
+          >
+            RPM & Torque
+          </button>
+          <button 
+            className={`chart-tab ${activeTab === 'control' ? 'active' : ''}`}
+            onClick={() => setActiveTab('control')}
+          >
+            Control %
+          </button>
+          <button 
+            className={`chart-tab ${activeTab === 'connection' ? 'active' : ''}`}
+            onClick={() => setActiveTab('connection')}
+          >
+            Connection
+          </button>
+          <button 
+            className={`chart-tab ${activeTab === 'connection-control' ? 'active' : ''}`}
+            onClick={() => setActiveTab('connection-control')}
+          >
+            Conn Control
+          </button>
+        </div>
+        <div className="limit-toggle">
+          <label className="limit-toggle-label">
+            <input 
+              type="checkbox" 
+              checked={showLimits} 
+              onChange={() => setShowLimits(!showLimits)} 
+            />
+            Show Operational Limits
+          </label>
+        </div>
+      </div>
+    </div>
 
-<div className="chart-footer">
-<div className="chart-legend">
-{activeTab === 'control' ? (
-<>
-<div className="legend-item">
-  <div className="legend-color" style={{ backgroundColor: '#1a73e8' }}></div>
-  <div className="legend-label">Rate of Penetration (ft/hr)</div>
-</div>
-<div className="legend-item">
-  <div className="legend-color" style={{ backgroundColor: 'rgba(52, 168, 83, 0.7)' }}></div>
-  <div className="legend-label">Control Drilling (%)</div>
-</div>
-</>
-) : activeTab === 'connection' ? (
-<>
-<div className="legend-item">
-  <div className="legend-color" style={{ backgroundColor: CHART_COLORS.connection }}></div>
-  <div className="legend-label">Total Connection</div>
-</div>
-<div className="legend-item">
-  <div className="legend-color" style={{ backgroundColor: CHART_COLORS.preConnection }}></div>
-  <div className="legend-label">Pre-Connection</div>
-</div>
-<div className="legend-item">
-  <div className="legend-color" style={{ backgroundColor: CHART_COLORS.postConnection }}></div>
-  <div className="legend-label">Post-Connection</div>
-</div>
-</>
-) : activeTab === 'connection-control' ? (
-<>
-<div className="legend-item">
-  <div className="legend-color" style={{ backgroundColor: 'rgba(52, 168, 83, 0.7)' }}></div>
-  <div className="legend-label">Pre-Connection Control</div>
-</div>
-<div className="legend-item">
-  <div className="legend-color" style={{ backgroundColor: 'rgba(251, 188, 4, 0.7)' }}></div>
-  <div className="legend-label">Pre-Connection Manual</div>
-</div>
-<div className="legend-item">
-  <div className="legend-color" style={{ backgroundColor: 'rgba(66, 133, 244, 0.7)' }}></div>
-  <div className="legend-label">Post-Connection Control</div>
-</div>
-<div className="legend-item">
-  <div className="legend-color" style={{ backgroundColor: 'rgba(234, 67, 53, 0.7)' }}></div>
-  <div className="legend-label">Post-Connection Manual</div>
-</div>
-</>
-) : activeTab === 'combined' ? (
-<>
-<div className="legend-item">
-  <div className="legend-color" style={{ backgroundColor: CHART_COLORS.rop }}></div>
-  <div className="legend-label">ROP (ft/hr)</div>
-</div>
-<div className="legend-item">
-  <div className="legend-color" style={{ backgroundColor: CHART_COLORS.wob }}></div>
-  <div className="legend-label">WOB (klbs)</div>
-</div>
-<div className="legend-item">
-  <div className="legend-color" style={{ backgroundColor: CHART_COLORS.rpm }}></div>
-  <div className="legend-label">RPM</div>
-</div>
-<div className="legend-item">
-  <div className="legend-color" style={{ backgroundColor: CHART_COLORS.torque }}></div>
-  <div className="legend-label">Torque (klbf-ft)</div>
-</div>
-</>
-) : (
-visibleCharts.map((chart, index) => (
-chart && chart.data && (
-  <div className="legend-item" key={index}>
-    <div className="legend-color" style={{ backgroundColor: chart.color }}></div>
-    <div className="legend-label">{chart.title}</div>
+    <div className={`chart-container ${activeTab === 'control' || activeTab === 'connection' || activeTab === 'combined' || activeTab === 'connection-control' ? 'single-chart' : ''}`}>
+      <div className={`chart ${(activeTab === 'control' || activeTab === 'connection' || activeTab === 'combined' || activeTab === 'connection-control') ? 'full-width' : ''}`}>
+        {visibleCharts[0] && visibleCharts[0].data && (
+          visibleCharts[0].type === 'bar' ? (
+            <Bar 
+              data={createChartConfig(visibleCharts[0])} 
+              options={visibleCharts[0].options} 
+            />
+          ) : visibleCharts[0].type === 'combo' ? (
+            <Chart 
+              data={createChartConfig(visibleCharts[0])} 
+              options={visibleCharts[0].options} 
+            />
+          ) : visibleCharts[0].type === 'combined' ? (
+            <Line 
+              data={createChartConfig(visibleCharts[0])} 
+              options={visibleCharts[0].options} 
+            />
+          ) : visibleCharts[0].type === 'connection' ? (
+            <Bar 
+              data={createChartConfig(visibleCharts[0])} 
+              options={visibleCharts[0].options} 
+            />
+          ) : visibleCharts[0].type === 'connection-control' ? (
+            <Bar 
+              data={createChartConfig(visibleCharts[0])} 
+              options={visibleCharts[0].options} 
+            />
+          ) : (
+            <Line 
+              data={createChartConfig(visibleCharts[0])} 
+              options={visibleCharts[0].options} 
+            />
+          )
+        )}
+      </div>
+
+      {activeTab !== 'control' && activeTab !== 'connection' && activeTab !== 'combined' && activeTab !== 'connection-control' && visibleCharts[1] && (
+        <div className="chart">
+          {visibleCharts[1].data && (
+            visibleCharts[1].type === 'bar' ? (
+              <Bar 
+                data={createChartConfig(visibleCharts[1])} 
+                options={visibleCharts[1].options} 
+              />
+            ) : (
+              <Line 
+                data={createChartConfig(visibleCharts[1])} 
+                options={visibleCharts[1].options} 
+              />
+            )
+          )}
+        </div>
+      )}
+    </div>
+
+    <div className="chart-footer">
+      <div className="chart-legend">
+        {activeTab === 'control' ? (
+          <>
+            <div className="legend-item">
+              <div className="legend-color" style={{ backgroundColor: '#1a73e8' }}></div>
+              <div className="legend-label">Rate of Penetration (ft/hr)</div>
+            </div>
+            <div className="legend-item">
+              <div className="legend-color" style={{ backgroundColor: 'rgba(52, 168, 83, 0.7)' }}></div>
+              <div className="legend-label">Control Drilling (%)</div>
+            </div>
+          </>
+        ) : activeTab === 'connection' ? (
+          <>
+            <div className="legend-item">
+              <div className="legend-color" style={{ backgroundColor: CHART_COLORS.connection }}></div>
+              <div className="legend-label">Total Connection</div>
+            </div>
+            <div className="legend-item">
+              <div className="legend-color" style={{ backgroundColor: CHART_COLORS.preConnection }}></div>
+              <div className="legend-label">Pre-Connection</div>
+            </div>
+            <div className="legend-item">
+              <div className="legend-color" style={{ backgroundColor: CHART_COLORS.postConnection }}></div>
+              <div className="legend-label">Post-Connection</div>
+            </div>
+          </>
+        ) : activeTab === 'connection-control' ? (
+          <>
+            <div className="legend-item">
+              <div className="legend-color" style={{ backgroundColor: 'rgba(52, 168, 83, 0.7)' }}></div>
+              <div className="legend-label">Pre-Connection Control</div>
+            </div>
+            <div className="legend-item">
+              <div className="legend-color" style={{ backgroundColor: 'rgba(251, 188, 4, 0.7)' }}></div>
+              <div className="legend-label">Pre-Connection Manual</div>
+            </div>
+            <div className="legend-item">
+              <div className="legend-color" style={{ backgroundColor: 'rgba(66, 133, 244, 0.7)' }}></div>
+              <div className="legend-label">Post-Connection Control</div>
+            </div>
+            <div className="legend-item">
+              <div className="legend-color" style={{ backgroundColor: 'rgba(234, 67, 53, 0.7)' }}></div>
+              <div className="legend-label">Post-Connection Manual</div>
+            </div>
+          </>
+        ) : activeTab === 'combined' ? (
+          <>
+            <div className="legend-item">
+              <div className="legend-color" style={{ backgroundColor: CHART_COLORS.rop }}></div>
+              <div className="legend-label">ROP (ft/hr)</div>
+            </div>
+            <div className="legend-item">
+              <div className="legend-color" style={{ backgroundColor: CHART_COLORS.wob }}></div>
+              <div className="legend-label">WOB (klbs)</div>
+            </div>
+            <div className="legend-item">
+              <div className="legend-color" style={{ backgroundColor: CHART_COLORS.rpm }}></div>
+              <div className="legend-label">RPM</div>
+            </div>
+            <div className="legend-item">
+              <div className="legend-color" style={{ backgroundColor: CHART_COLORS.torque }}></div>
+              <div className="legend-label">Torque (klbf-ft)</div>
+            </div>
+          </>
+        ) : (
+          visibleCharts.map((chart, index) => (
+            chart && chart.data && (
+              <div className="legend-item" key={index}>
+                <div className="legend-color" style={{ backgroundColor: chart.color }}></div>
+                <div className="legend-label">{chart.title}</div>
+              </div>
+            )
+          ))
+        )}
+      </div>
+      <div className="chart-info">
+        <p>Showing data for {chartData.rop.data.length} stands</p>
+        {showLimits && (
+          <div className="limits-info">
+            <span>Operational limits active</span>
+          </div>
+        )}
+      </div>
+    </div>
   </div>
-)
-))
-)}
-</div>
-<div className="chart-info">
-<p>Showing data for {chartData.rop.data.length} stands</p>
-{showLimits && (
-<div className="limits-info">
-<span>Operational limits active</span>
-</div>
-)}
-</div>
-</div>
-</div>
 );
 }
 
 export default ChartPanel;
-
