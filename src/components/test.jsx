@@ -1165,7 +1165,7 @@ function ChartPanel({ chartData }) {
   <h3>Parameter Trends</h3>
   <div className="chart-controls">
     <div className="chart-tabs">
-    <button 
+      <button 
         className={`chart-tab ${activeTab === 'combined' ? 'active' : ''}`}
         onClick={() => setActiveTab('combined')}
       >

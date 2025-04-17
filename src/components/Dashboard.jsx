@@ -3,9 +3,16 @@ import ChartPanel from './ChartPanel';
 import OpsLimitsTracker from './OpsLimitsTracker';
 import ConnectionKPI from './ConnectionKPI';
 import FileUpload from './FileUpload';
+// import TimeBreakdownAnalysis from './TimeBreakdownAnalysis';
+// import OpsLimitsChart from './OpsLimitsChart';
+// import ConnectionKPI from './ConnectionKPI';
+// import Header from './Header';
+// import ParametersPanel from './ParametersPanel';
 import { readDrillingDataFromCSV, processDrillingData } from '../utils/csvDataProvider';
 import { readDrillingDataFromExcel, processExcelData } from '../utils/excelDataProvider';
 import './Dashboard.css';
+import MultiStandAnalysis from './MultiStandAnalysis';
+
 
 function Dashboard() {
 
@@ -94,6 +101,11 @@ const initDrillingMetrics = () => ({
   drillInControlMeters: 0
 });
 
+const [showMultiStandAnalysis, setShowMultiStandAnalysis] = useState(false);
+const toggleMultiStandAnalysis = () => {
+  setShowMultiStandAnalysis(prev => !prev);
+};
+
 // State for stand history
 const [stands, setStands] = useState([]);
 
@@ -151,7 +163,7 @@ const [opsLimits, setOpsLimits] = useState({
   wob: 0,
   torque: 0,
   rpm: 0,
-  rop: 0,
+  rop: 2,
   diffP: 0
 });
 
@@ -929,7 +941,7 @@ const drillingMetrics = calculateDrillingMetrics();
 const opsLimitsMetrics = calculateOpsLimitsMetrics();
 
 // For demo purposes - hardcoded values to match the screenshot
-const totalDuration = 0.57; // hours
+const totalDuration = 5.57; // hours
 const reportDate = "4/3/2025 3:30:09 AM";
 
 // Calculate control percentages for the selected stand
@@ -1073,6 +1085,31 @@ const totalConnectionControlPercent = selectedStand ?
           
           {/* Stand Selector in right corner */}
           <div className="stand-selector">
+            <div className="selector-controls">
+              <label htmlFor="stand-dropdown">Select Stand:</label>
+              <select 
+                id="stand-dropdown" 
+                className="stand-dropdown"
+                value={selectedStandId || ''}
+                onChange={handleStandDropdownChange}
+              >
+                {filteredStands.map(stand => (
+                  <option key={stand.id} value={stand.id}>
+                    Stand {stand.id} - {(stand.distanceDrilled || 0).toFixed(1)} ft
+                  </option>
+                ))}
+              </select>
+              
+              <button 
+                className="multi-stand-button"
+                onClick={toggleMultiStandAnalysis}
+                title="Analyze multiple stands"
+              >
+                Multi-Stand Analysis
+              </button>
+            </div>
+          </div>
+          {/* <div className="stand-selector">
             <label htmlFor="stand-dropdown">Select Stand:</label>
             <select 
               id="stand-dropdown" 
@@ -1086,7 +1123,7 @@ const totalConnectionControlPercent = selectedStand ?
                 </option>
               ))}
             </select>
-          </div>
+          </div> */}
           
           {/* Selected Stand Details */}
           {selectedStandId && filteredStands && filteredStands.length > 0 && (
@@ -1227,11 +1264,22 @@ const totalConnectionControlPercent = selectedStand ?
           />
         </div>
       )}
+      {showMultiStandAnalysis && hasData && (
+  <div className="multi-stand-overlay">
+    <MultiStandAnalysis 
+      stands={filteredStands} 
+      onClose={toggleMultiStandAnalysis}
+    />
+  </div>
+)}
     </div>
     );
 }
 
 export default Dashboard;
+
+
+
 
 
 
