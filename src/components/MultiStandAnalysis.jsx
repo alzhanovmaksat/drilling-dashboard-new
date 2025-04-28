@@ -114,28 +114,36 @@ function MultiStandAnalysis({ stands, onClose }) {
     // Calculate total distance drilled
     const totalDistance = calculateSum(selectedStandObjects, 'distanceDrilled');
     
-    // Prepare chart data
-    const ropChartData = {
-      labels: selectedStandObjects.map(stand => `Stand ${stand.id}`),
-      datasets: [{
-        label: 'ROP (ft/hr)',
-        data: selectedStandObjects.map(stand => stand.rop || 0),
-        borderColor: 'rgba(26, 115, 232, 0.8)',
-        backgroundColor: 'rgba(26, 115, 232, 0.1)',
-        borderWidth: 2,
-      }]
-    };
+    // Sort selected stands by ID for charts
+    const sortedSelectedStands = [...selectedStandObjects].sort((a, b) => a.id - b.id);
     
-    const controlChartData = {
-      labels: selectedStandObjects.map(stand => `Stand ${stand.id}`),
-      datasets: [{
-        label: 'Control %',
-        data: selectedStandObjects.map(stand => stand.controlDrillingPercent || 0),
-        borderColor: 'rgba(52, 168, 83, 0.8)',
-        backgroundColor: 'rgba(52, 168, 83, 0.5)',
-        borderWidth: 2,
-        type: 'bar'
-      }]
+    // Create combined chart data for ROP and Control %
+    const combinedChartData = {
+      labels: sortedSelectedStands.map(stand => `Stand ${stand.id}`),
+      datasets: [
+        {
+          type: 'line',
+          label: 'ROP (ft/hr)',
+          data: sortedSelectedStands.map(stand => stand.rop || 0),
+          borderColor: 'rgba(26, 115, 232, 0.8)',
+          backgroundColor: 'rgba(26, 115, 232, 0.1)',
+          borderWidth: 2,
+          pointBackgroundColor: 'rgba(26, 115, 232, 0.8)',
+          pointBorderColor: '#fff',
+          pointRadius: 4,
+          pointHoverRadius: 6,
+          yAxisID: 'y1',
+        },
+        {
+          type: 'bar',
+          label: 'Control %',
+          data: sortedSelectedStands.map(stand => stand.controlDrillingPercent || 0),
+          backgroundColor: 'rgba(52, 168, 83, 0.7)',
+          borderColor: 'rgba(52, 168, 83, 1)',
+          borderWidth: 1,
+          yAxisID: 'y',
+        }
+      ]
     };
     
     // Set analysis results
@@ -157,8 +165,7 @@ function MultiStandAnalysis({ stands, onClose }) {
       totalRpmLimits,
       totalDiffPLimits,
       totalDistance,
-      ropChartData,
-      controlChartData,
+      combinedChartData,
       standCount: selectedStandObjects.length
     });
   }, [selectedStands, stands]);
@@ -231,22 +238,93 @@ function MultiStandAnalysis({ stands, onClose }) {
     }
   };
 
-  // Chart options
-  const chartOptions = {
+  // Combined chart options
+  const combinedChartOptions = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
-      legend: {
-        position: 'top',
-      },
       title: {
         display: true,
-        text: 'Selected Stands Performance'
+        text: 'ROP and Control % Comparison',
+        font: {
+          size: 16
+        }
       },
+      legend: {
+        position: 'top',
+        labels: {
+          usePointStyle: true,
+          padding: 15
+        }
+      },
+      tooltip: {
+        callbacks: {
+          label: function(context) {
+            let label = context.dataset.label || '';
+            if (context.dataset.type === 'line') {
+              return `${label}: ${context.raw.toFixed(1)} ft/hr`;
+            } else {
+              return `${label}: ${context.raw.toFixed(1)}%`;
+            }
+          }
+        }
+      }
     },
     scales: {
+      x: {
+        title: {
+          display: true,
+          text: 'Stand Number',
+          padding: {
+            top: 10
+          }
+        },
+        grid: {
+          display: false
+        }
+      },
       y: {
-        beginAtZero: true,
+        type: 'linear',
+        display: true,
+        position: 'left',
+        min: 0,
+        max: 100,
+        title: {
+          display: true,
+          text: 'Control Drilling %',
+          padding: {
+            bottom: 10
+          }
+        },
+        grid: {
+          color: 'rgba(255, 255, 255, 0.1)'
+        },
+        ticks: {
+          callback: function(value) {
+            return value + '%';
+          }
+        }
+      },
+      y1: {
+        type: 'linear',
+        display: true,
+        position: 'right',
+        min: 0,
+        // Dynamically set the max value for ROP with some headroom
+        max: function(context) {
+          const values = context.chart.data.datasets[0].data;
+          return Math.max(...values) * 1.2 || 100;
+        },
+        title: {
+          display: true,
+          text: 'ROP (ft/hr)',
+          padding: {
+            bottom: 10
+          }
+        },
+        grid: {
+          display: false // Don't show grid lines for the right axis
+        }
       }
     }
   };
@@ -424,28 +502,13 @@ function MultiStandAnalysis({ stands, onClose }) {
             </div>
           </div>
           
+          {/* Single Combined Chart for ROP and Control % */}
           <div className="analysis-charts">
-            <div className="chart-container">
-              <Chart 
-                type="line"
-                data={analysisResults.ropChartData}
-                options={chartOptions}
-              />
-            </div>
-            <div className="chart-container">
+            <div className="chart-container" style={{ width: '100%', height: '400px' }}>
               <Chart 
                 type="bar"
-                data={analysisResults.controlChartData}
-                options={{
-                  ...chartOptions,
-                  plugins: {
-                    ...chartOptions.plugins,
-                    title: {
-                      ...chartOptions.plugins.title,
-                      text: 'Control Drilling Percentage'
-                    }
-                  }
-                }}
+                data={analysisResults.combinedChartData}
+                options={combinedChartOptions}
               />
             </div>
           </div>

@@ -956,3 +956,51 @@ body {
 .benchmark-adjuster input {
   flex-grow: 1;
 }
+
+.ops-limits-tracker-container {
+  margin-top: 20px;
+  padding-top: 0;
+  position: relative;
+  width: 100%;
+}
+.ops-limits-tracker .panel-header {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
+  padding: 0px 0;
+  background-color: #000;
+  border-bottom: 1px solid #333;
+  font-size: 1.1rem;
+}
+.left-column .operational-limits-title,
+.operational-limits-analysis {
+  font-size: 1.1rem;
+  padding: 10px;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border-top: 1px solid #333;
+  background-color: #000;
+}
+.dashboard {
+  display: flex;
+  flex-direction: column;
+}
+.dashboard > div:not(.dashboard-grid) {
+  margin-top: 0;
+  padding-top: 0;
+  padding-bottom: 20px;
+}
+.ops-limits-tracker .panel-header h3 {
+  margin: 0;
+  padding: 0;
+  font-size: 1.1rem;
+  font-weight: normal;
+}
+.parameter-trends-container .panel-header {
+  margin-bottom: -5px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #333;
+  text-align: center;
+}

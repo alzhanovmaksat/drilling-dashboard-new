@@ -1,44 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Chart as ChartJS, 
-  CategoryScale, 
-  LinearScale, 
-  PointElement, 
-  LineElement, 
-  BarElement,
-  Title, 
-  Tooltip, 
-  Legend
-} from 'chart.js';
-import { Bar } from 'react-chartjs-2';
-
-// Register ChartJS components
-ChartJS.register(
-  CategoryScale, 
-  LinearScale, 
-  PointElement, 
-  LineElement,
-  BarElement,
-  Title, 
-  Tooltip, 
-  Legend
-);
-
-// Set chart theme for dark mode
-ChartJS.defaults.color = '#e0e0e0';
-ChartJS.defaults.borderColor = '#444';
-ChartJS.defaults.scale.grid.color = '#333';
 
 const OpsLimitsTracker = ({ stands, timeRange }) => {
-  const [opsLimitData, setOpsLimitData] = useState({
-    labels: [],
-    ropMaxCounts: [],
-    wobMaxCounts: [],
-    torqueMaxCounts: [],
-    rpmMaxCounts: [],
-    diffPMaxCounts: []
-  });
-  
   const [timePeriod, setTimePeriod] = useState('all');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [summaryData, setSummaryData] = useState({
@@ -51,7 +13,7 @@ const OpsLimitsTracker = ({ stands, timeRange }) => {
     postConnectionManual: 0
   });
   
-  // Process stands data to extract ops limits counts
+  // Process stands data to extract summary data
   useEffect(() => {
     if (!stands || stands.length === 0) return;
     
@@ -81,23 +43,6 @@ const OpsLimitsTracker = ({ stands, timeRange }) => {
         return standDate >= startDate && standDate <= endDate;
       });
     }
-    
-    // Map stand data to ops limits counts
-    const labels = filteredStands.map(stand => `Stand ${stand.id}`);
-    const ropMaxCounts = filteredStands.map(stand => stand.opsLimitRopMaxCount || 0);
-    const wobMaxCounts = filteredStands.map(stand => stand.opsLimitWobMaxCount || 0);
-    const torqueMaxCounts = filteredStands.map(stand => stand.opsLimitTorqueMaxCount || 0);
-    const rpmMaxCounts = filteredStands.map(stand => stand.opsLimitRpmMaxCount || 0);
-    const diffPMaxCounts = filteredStands.map(stand => stand.opsLimitDiffPMaxCount || 0);
-    
-    setOpsLimitData({
-      labels,
-      ropMaxCounts,
-      wobMaxCounts,
-      torqueMaxCounts,
-      rpmMaxCounts,
-      diffPMaxCounts
-    });
     
     // Calculate summary data
     const totalDistance = filteredStands.reduce((sum, stand) => 
@@ -132,89 +77,6 @@ const OpsLimitsTracker = ({ stands, timeRange }) => {
     
   }, [stands, timePeriod, selectedDate]);
   
-  // Chart configuration for ops limits
-  const getOpsLimitsChartConfig = () => {
-    return {
-      labels: opsLimitData.labels,
-      datasets: [
-        {
-          label: 'ROP Max',
-          data: opsLimitData.ropMaxCounts,
-          backgroundColor: 'rgba(26, 115, 232, 0.7)',
-          borderColor: 'rgba(26, 115, 232, 1)',
-          borderWidth: 1
-        },
-        {
-          label: 'WOB Max',
-          data: opsLimitData.wobMaxCounts,
-          backgroundColor: 'rgba(52, 168, 83, 0.7)',
-          borderColor: 'rgba(52, 168, 83, 1)',
-          borderWidth: 1
-        },
-        {
-          label: 'Torque Max',
-          data: opsLimitData.torqueMaxCounts,
-          backgroundColor: 'rgba(251, 188, 4, 0.7)',
-          borderColor: 'rgba(251, 188, 4, 1)',
-          borderWidth: 1
-        },
-        {
-          label: 'RPM Max',
-          data: opsLimitData.rpmMaxCounts,
-          backgroundColor: 'rgba(234, 67, 53, 0.7)',
-          borderColor: 'rgba(234, 67, 53, 1)',
-          borderWidth: 1
-        },
-        {
-          label: 'Diff P Max',
-          data: opsLimitData.diffPMaxCounts,
-          backgroundColor: 'rgba(153, 52, 232, 0.7)',
-          borderColor: 'rgba(153, 52, 232, 1)',
-          borderWidth: 1
-        }
-      ]
-    };
-  };
-  
-  // Chart options for ops limits
-  const opsLimitsChartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    scales: {
-      y: {
-        beginAtZero: true,
-        title: {
-          display: true,
-          text: 'Count'
-        }
-      },
-      x: {
-        title: {
-          display: true,
-          text: 'Stand Number'
-        }
-      }
-    },
-    plugins: {
-      title: {
-        display: true,
-        text: 'Operational Limits Count by Stand'
-      },
-      legend: {
-        position: 'top'
-      },
-      tooltip: {
-        callbacks: {
-          label: (context) => {
-            const label = context.dataset.label || '';
-            const value = context.parsed.y;
-            return `${label}: ${value}`;
-          }
-        }
-      }
-    }
-  };
-  
   // Get time breakdown options for dropdown
   const getTimeOptions = () => {
     return [
@@ -228,7 +90,7 @@ const OpsLimitsTracker = ({ stands, timeRange }) => {
   return (
     <div className="ops-limits-tracker">
       <div className="panel-header">
-        <h3>Operational Limits Analysis</h3>
+        <h3>Time Period Summary</h3>
         
         <div className="time-filter-controls">
           <div className="filter-row">
@@ -293,15 +155,6 @@ const OpsLimitsTracker = ({ stands, timeRange }) => {
             <div className="summary-label">Post-Conn Manual</div>
             <div className="summary-value">{summaryData.postConnectionManual} min</div>
           </div>
-        </div>
-      </div>
-      
-      <div className="ops-limits-chart-container">
-        <div className="chart-wrapper" style={{ height: '300px' }}>
-          <Bar 
-            data={getOpsLimitsChartConfig()} 
-            options={opsLimitsChartOptions}
-          />
         </div>
       </div>
       
@@ -395,17 +248,6 @@ const OpsLimitsTracker = ({ stands, timeRange }) => {
           font-weight: 500;
         }
         
-        .ops-limits-chart-container {
-          margin-top: 15px;
-        }
-        
-        .chart-wrapper {
-          background-color: #111;
-          border: 1px solid #333;
-          border-radius: 4px;
-          padding: 10px;
-        }
-        
         @media (max-width: 768px) {
           .summary-grid {
             grid-template-columns: repeat(2, 1fr);
@@ -421,6 +263,5 @@ const OpsLimitsTracker = ({ stands, timeRange }) => {
 };
 
 export default OpsLimitsTracker;
-
 
 

@@ -12,6 +12,8 @@ import { readDrillingDataFromCSV, processDrillingData } from '../utils/csvDataPr
 import { readDrillingDataFromExcel, processExcelData } from '../utils/excelDataProvider';
 import './Dashboard.css';
 import MultiStandAnalysis from './MultiStandAnalysis';
+import Papa from 'papaparse';
+
 
 
 function Dashboard() {
@@ -98,7 +100,9 @@ const initDrillingMetrics = () => ({
   preConnectionControlPercent: 0,
   postConnectionControlPercent: 0,
   totalMeters: 0,
-  drillInControlMeters: 0
+  drillInControlMeters: 0,
+  totalSlideDrillingDistance: 0,   
+  totalSlideDrillingPercent: 0 
 });
 
 const [showMultiStandAnalysis, setShowMultiStandAnalysis] = useState(false);
@@ -483,7 +487,16 @@ const handleFileUpload = async (file) => {
     })).sort((a, b) => a.id - b.id);
     
     console.log("Sample stand:", sortedStands[0]);
-    
+
+    // Process Slide drilling depth
+    const calculateSlideDrillingDistance = (slideDuration, rop) => {
+      // Convert seconds to hours
+    const slideDurationHours = slideDuration / 3600;
+      // Calculate distance using ROP (feet per hour)
+      return slideDurationHours * rop;
+    };
+
+
     // Process connection time data
     const connectionTimeData = processConnectionTimeData(rawData);
     
@@ -760,6 +773,14 @@ const calculateDrillingMetrics = (standsToCalculate = filteredStands) => {
     
     // Calculate total distance drilled safely
     const totalDistanceDrilled = safeReduceSum(standsToCalculate, stand => stand.distanceDrilled || 0);
+
+     // Add calculation for total slide drilling distance
+     const totalSlideDrillingDistance = safeReduceSum(standsToCalculate, 
+      stand => stand.slideDrillingDistance || 0);
+    
+    // Calculate slide drilling percentage
+    const totalSlideDrillingPercent = totalDistanceDrilled > 0 ? 
+      (totalSlideDrillingDistance / totalDistanceDrilled) * 100 : 0;
     
     // Calculate weighted average of control drilling percent
     const weightedControlSum = safeReduceSum(standsToCalculate, 
@@ -797,7 +818,9 @@ const calculateDrillingMetrics = (standsToCalculate = filteredStands) => {
       preConnectionControlPercent,
       postConnectionControlPercent,
       totalMeters,
-      drillInControlMeters
+      drillInControlMeters,
+      totalSlideDrillingDistance,  
+      totalSlideDrillingPercent
     };
   } catch (error) {
     console.error("Error in calculateDrillingMetrics:", error);
@@ -988,6 +1011,16 @@ const totalConnectionControlPercent = selectedStand ?
                 <div className="kpi-header">Drilling In Control %</div>
                 <div className="kpi-value">{safeToFixed(drillingMetrics?.totalControlDrillingPercent, 2)}</div>
               </div>
+
+              <div className="kpi-box">
+                <div className="kpi-header">Slide Drilling (ft)</div>
+                <div className="kpi-value">{safeToFixed(drillingMetrics?.totalSlideDrillingDistance, 2)}</div>
+              </div>
+
+              <div className="kpi-box">
+                <div className="kpi-header">Slide Drilling %</div>
+                <div className="kpi-value">{safeToFixed(drillingMetrics?.totalSlideDrillingPercent, 2)}</div>
+              </div>
   
               <div className="kpi-box">
                 <div className="kpi-header">Pre Conn Control %</div>
@@ -1164,6 +1197,18 @@ const totalConnectionControlPercent = selectedStand ?
                           {safeToFixed(selectedStand.controlDrillingPercent, 1)}%
                         </span>
                       </div>
+                      <div className="selected-stand-item">
+                        <span className="detail-label">Slide Distance:</span>
+                        <span className="detail-value">
+                          {safeToFixed(selectedStand.slideDrillingDistance, 2)} ft
+                        </span>
+                      </div>
+                      <div className="selected-stand-item">
+                        <span className="detail-label">Slide %:</span>
+                        <span className="detail-value">
+                          {safeToFixed(selectedStand.slideDrillingPercent, 1)}%
+                        </span>
+                      </div>
                       
                       {/* Connection time breakdown details */}
                       <div className="selected-stand-item">
@@ -1246,7 +1291,7 @@ const totalConnectionControlPercent = selectedStand ?
         </div>
       </div>
       
-      {/* Operational Limits Tracker */}
+      Time Period Summary
       {hasData && (
         <div className="ops-limits-tracker-container">
           <OpsLimitsTracker stands={filteredStands} timeRange={timeRange} />

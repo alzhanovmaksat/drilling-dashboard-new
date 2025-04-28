@@ -56,7 +56,7 @@ function FileUpload({ onFileUpload, isLoading, error, acceptedFormats = ".txt,.c
       <h2>Upload Your Drilling Data</h2>
       <p className="instructions">
         Upload your drilling data file to visualize on the dashboard.
-        <strong>We now support Excel files (.xlsx, .xls) and tab-delimited text files (.txt, .tsv).</strong>
+        <strong>We now support Excel files (.xlsx, .xls) and CSV files (.csv).</strong>
       </p>
       
       <div 

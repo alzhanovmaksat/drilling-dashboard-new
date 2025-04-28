@@ -25,6 +25,14 @@ export const readDrillingDataFromCSV = async (file) => {
 
 // Parse CSV/TXT data into structured array
 const parseCSVData = (text) => {
+  const parseResult = Papa.parse(text, {
+    header: true,
+    dynamicTyping: true,
+    skipEmptyLines: true
+  });
+  
+  return parseResult.data;
+
   // Split into lines
   const lines = text.split('\n');
   
@@ -51,6 +59,7 @@ const parseCSVData = (text) => {
   return data;
 };
 
+
 // Process drilling data into structured format for dashboard
 export const processDrillingData = (rawData) => {
   // Filter valid data rows
@@ -65,18 +74,36 @@ export const processDrillingData = (rawData) => {
     throw new Error("No valid drilling data found");
   }
   
+
   // Extract Well ID from first row
   const wellId = validData[0]['WellId'] || 'Unknown Well';
   
   // Process each row into a stand object
   const stands = validData.map(row => {
     // Parse stand index
-    const standIndex = parseInt(row['StandIndex']);
+    const standIndex = parseInt(row.StandIndex);
     
     // Parse depths
     const startDepth = parseFloat(row['StartDepth(ft)']);
     const endDepth = parseFloat(row['EndDepth(ft)']);
     
+    // Calculate distance drilled
+    const distanceDrilled = endDepth - startDepth;
+
+    // Parse slide drilling distance (add this here)
+    const slideDrillingDistance = row['SlideDrillingDistance(ft)'] 
+    ? parseFloat(row['SlideDrillingDistance(ft)']) : 0;
+
+    // Calculate rotary drilling distance if needed
+    const rotaryDrillingDistance = row['RotaryDrillingDistance(ft)'] 
+    ? parseFloat(row['RotaryDrillingDistance(ft)']) : 0;
+
+    // Calculate slide percentage 
+    let slideDrillingPercent = 0;
+    if (distanceDrilled > 0) {
+      slideDrillingPercent = Math.round((slideDrillingDistance / distanceDrilled) * 100);
+    }
+
     // Parse dates
     const startTime = new Date(row['StartTimeUTC']);
     const endTime = new Date(row['EndTimeUTC']);
@@ -105,17 +132,17 @@ export const processDrillingData = (rawData) => {
     const postConnectionOutControl = row['PostConnectionDurationOutControl(s)']
       ? parseFloat(row['PostConnectionDurationOutControl(s)']) : 0;
 
-    // Parse operational limits counts - New additions
+    // Parse operational limits counts
     const opsLimitRopMaxCount = row['OpsLimitsRopMaxChangeCount']
-      ? parseInt(row['OpsLimitsRopMaxChangeCount']) : 0;
+      ? parseFloat(row['OpsLimitsRopMaxChangeCount']) : 0;
     const opsLimitWobMaxCount = row['OpsLimitsWobMaxChangeCount']
-      ? parseInt(row['OpsLimitsWobMaxChangeCount']) : 0;
+      ? parseFloat(row['OpsLimitsWobMaxChangeCount']) : 0;
     const opsLimitTorqueMaxCount = row['OpsLimitsTorqueMaxChangeCount']
-      ? parseInt(row['OpsLimitsTorqueMaxChangeCount']) : 0;
+      ? parseFloat(row['OpsLimitsTorqueMaxChangeCount']) : 0;
     const opsLimitRpmMaxCount = row['OpsLimitsRpmMaxChangeCount']
-      ? parseInt(row['OpsLimitsRpmMaxChangeCount']) : 0;
+      ? parseFloat(row['OpsLimitsRpmMaxChangeCount']) : 0;
     const opsLimitDiffPMaxCount = row['OpsLimitsDiffPMaxChangeCount']
-      ? parseInt(row['OpsLimitsDiffPMaxChangeCount']) : 0;
+      ? parseFloat(row['OpsLimitsDiffPMaxChangeCount']) : 0;
     
     // Parse drilling parameters
     const rop = row['OnBottomRop(ft/h)'] ? parseFloat(row['OnBottomRop(ft/h)']) : 0;
@@ -124,8 +151,6 @@ export const processDrillingData = (rawData) => {
     const torque = row['RotaryTorqueAvgInControl(1000 lbf)'] ? parseFloat(row['RotaryTorqueAvgInControl(1000 lbf)']) : 0;
     const flowRate = row['RotaryFlowrateAvgInControl(bbl/d)'] ? parseFloat(row['RotaryFlowrateAvgInControl(bbl/d)']) : 0;
     
-    // Calculate distance drilled
-    const distanceDrilled = endDepth - startDepth;
     
     // Calculate control drilling percentage
     let controlDrillingPercent = 0;
@@ -145,7 +170,7 @@ export const processDrillingData = (rawData) => {
     return {
       id: standIndex,
       title: `Stand ${standIndex}`,
-      standType: 'Drilling',
+      standType: row['StandType'] || 'Drilling',
       timeRange,
       depth: endDepth,
       rop,
@@ -158,6 +183,9 @@ export const processDrillingData = (rawData) => {
       distanceDrilled,
       rotaryDuration,
       slideDuration,
+      slideDrillingDistance,    
+      rotaryDrillingDistance,   
+      slideDrillingPercent, 
       connectionTime,
       preConnectionTime,
       postConnectionTime,
@@ -166,14 +194,22 @@ export const processDrillingData = (rawData) => {
       postConnectionInControl,
       postConnectionOutControl,
       controlDrillingPercent,
-      opsLimitRopMaxCount: Math.floor(Math.random() * 6),
-      opsLimitWobMaxCount: Math.floor(Math.random() * 6),
-      opsLimitTorqueMaxCount: Math.floor(Math.random() * 6),
-      opsLimitRpmMaxCount: Math.floor(Math.random() * 6),
-      opsLimitDiffPMaxCount: Math.floor(Math.random() * 6),
-      isActive: standIndex === validData.length // Set the last stand as active
+      opsLimitRopMaxCount,
+      opsLimitWobMaxCount,
+      opsLimitTorqueMaxCount,
+      opsLimitRpmMaxCount,
+      opsLimitDiffPMaxCount,
+      startTime, 
+      endTime,   
+      isActive: false 
     };
   });
+  
+  // Set the last stand as active
+  if (stands.length > 0) {
+    const lastStand = stands[stands.length - 1];
+    lastStand.isActive = true;
+  }
   
   // Sort stands by ID for consistent display
   stands.sort((a, b) => a.id - b.id);
@@ -231,6 +267,14 @@ export const processDrillingData = (rawData) => {
     postConnectionManual: {
       labels: stands.map(stand => `Stand ${stand.id}`),
       data: stands.map(stand => stand.postConnectionOutControl)
+    },
+    slideDrillingPercent: {
+      labels: stands.map(stand => `Stand ${stand.id}`),
+      data: stands.map(stand => stand.slideDrillingPercent)
+    },
+    slideDrillingDistance: {
+      labels: stands.map(stand => `Stand ${stand.id}`),
+      data: stands.map(stand => stand.slideDrillingDistance)
     }
   };
   

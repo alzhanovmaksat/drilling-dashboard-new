@@ -89,9 +89,10 @@ const CHART_COLORS = {
   connection: 'rgba(251, 188, 4, 0.7)', // Yellow
   preConnectionControl: 'rgba(52, 168, 83, 0.7)', // Green for control
   preConnectionManual: 'rgba(251, 188, 4, 0.7)', // Yellow for manual
-  postConnectionControl: 'rgba(66, 133, 244, 0.7)', // Blue for control
-  postConnectionManual: 'rgba(234, 67, 53, 0.7)', // Red for manual
+  postConnectionControl: 'rgba(52, 168, 83, 0.7)', // Green for control
+  postConnectionManual: 'rgba(251, 188, 4, 0.7)', // Yellow for manual
   benchmark: 'rgb(255, 0, 0)', // Solid RED for benchmark
+  slidePercent: 'rgba(255, 99, 132, 0.7)' // Pink/red for slide drilling
 };
 
 function ChartPanel({ chartData }) {
@@ -113,6 +114,104 @@ function ChartPanel({ chartData }) {
       [type]: value
     }));
   };
+
+  // Add this function with your other chart option functions in ChartPanel.jsx
+const getSlideRopComboChartOptions = () => {
+  const ropStats = getStats(chartData.rop.data);
+  const slideStats = getStats(chartData.slideDrillingDistance?.data || []);
+  const maxRop = Math.max(400, ropStats.max + (ropStats.max - ropStats.min) * 0.1);
+  const maxSlide = Math.max(50, slideStats.max + (slideStats.max - slideStats.min) * 0.1);
+  
+  const options = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      title: {
+        display: true,
+        text: 'Slide Drilling (ft) with ROP'
+      },
+      tooltip: {
+        callbacks: {
+          label: (context) => {
+            if (context.datasetIndex === 0) {
+              return `ROP: ${context.parsed.y.toFixed(1)} ft/hr`;
+            } else {
+              return `Slide: ${context.parsed.y.toFixed(1)} ft`;
+            }
+          }
+        }
+      },
+      annotation: {
+        drawTime: 'afterDatasetsDraw',
+        annotations: {}
+      }
+    },
+    scales: {
+      y: {
+        type: 'linear',
+        display: true,
+        position: 'right', // ROP on right y-axis
+        beginAtZero: true,
+        min: 0,
+        max: maxRop,
+        title: {
+          display: true,
+          text: 'ROP (ft/hr)'
+        },
+        grid: {
+          drawOnChartArea: false // only want the grid lines for slide distance
+        }
+      },
+      y1: {
+        type: 'linear',
+        display: true,
+        position: 'left', // Slide ft on left y-axis
+        beginAtZero: true,
+        max: maxSlide,
+        title: {
+          display: true,
+          text: 'Slide Distance (ft)'
+        }
+      },
+      x: {
+        title: {
+          display: true,
+          text: 'Stand Number'
+        }
+      }
+    }
+  };
+  
+  // Add ROP benchmark if enabled
+  if (showBenchmarks) {
+    if (!options.plugins.annotation.annotations) {
+      options.plugins.annotation.annotations = {};
+    }
+    
+    options.plugins.annotation.annotations.ropBenchmark = {
+      type: 'line',
+      yMin: benchmarks.rop,
+      yMax: benchmarks.rop,
+      borderColor: 'rgb(255, 0, 0)',
+      borderWidth: 3,
+      borderDash: [],
+      drawTime: 'afterDatasetsDraw',
+      z: 999,
+      yScaleID: 'y', // Applies to ROP y-axis
+      label: {
+        display: true,
+        content: `ROP Benchmark: ${benchmarks.rop} ft/hr`,
+        position: 'start',
+        backgroundColor: 'rgba(255, 0, 0, 0.8)',
+        font: {
+          size: 10
+        }
+      }
+    };
+  }
+  
+  return options;
+};
   
   // Force chart updates when benchmark settings change
   useEffect(() => {
@@ -649,15 +748,17 @@ function ChartPanel({ chartData }) {
       plugins: {
         title: {
           display: true,
-          text: 'Control Drilling (%) with ROP'
+          text: 'Control vs Manual Drilling (%) with ROP'
         },
         tooltip: {
           callbacks: {
             label: (context) => {
               if (context.datasetIndex === 0) {
                 return `ROP: ${context.parsed.y.toFixed(1)} ft/hr`;
-              } else {
+              } else if (context.datasetIndex === 1) {
                 return `Control: ${context.parsed.y}%`;
+              } else {
+                return `Manual: ${context.parsed.y}%`;
               }
             }
           }
@@ -691,82 +792,22 @@ function ChartPanel({ chartData }) {
           max: 100,
           title: {
             display: true,
-            text: 'Control %'
-          }
+            text: 'Drilling %'
+          },
+          stacked: true // Enable stacking for the percentage axis
         },
         x: {
           title: {
             display: true,
             text: 'Stand Number'
-          }
+          },
+          stacked: true // Enable stacking for x-axis
         }
       }
     };
     
-    // Add ROP limit annotations if enabled
-    if (showLimits) {
-      options.plugins.annotation = {
-        drawTime: 'afterDatasetsDraw', // Draw annotations after datasets
-        annotations: {
-          // ropMaxLimit: {
-          //   type: 'line',
-          //   yMin: operationalLimits.rop.max,
-          //   yMax: operationalLimits.rop.max,
-          //   borderColor: '#ffcc00',
-          //   borderWidth: 2,
-          //   yScaleID: 'y', // Applies to ROP y-axis
-          //   label: {
-          //     display: true,
-          //     content: 'ROP Max',
-          //     position: 'start',
-          //     backgroundColor: 'rgba(255, 204, 0, 0.8)',
-          //     font: {
-          //       size: 10
-          //     }
-          //   }
-          // },
-          // ropCriticalLimit: {
-          //   type: 'line',
-          //   yMin: operationalLimits.rop.critical,
-          //   yMax: operationalLimits.rop.critical,
-          //   borderColor: '#ff0000',
-          //   borderWidth: 2,
-          //   yScaleID: 'y', // Applies to ROP y-axis
-          //   label: {
-          //     display: true,
-          //     content: 'ROP Critical',
-          //     position: 'start',
-          //     backgroundColor: 'rgba(255, 0, 0, 0.8)',
-          //     font: {
-          //       size: 10
-          //     }
-          //   }
-          // },
-          // controlTarget: {
-          //   type: 'line',
-          //   yMin: 80,
-          //   yMax: 80,
-          //   borderColor: '#4caf50',
-          //   borderWidth: 2,
-          //   yScaleID: 'y1', // Applies to Control % y-axis
-          //   label: {
-          //     display: true,
-          //     content: 'Control Target',
-          //     position: 'start',
-          //     backgroundColor: 'rgba(76, 175, 80, 0.8)',
-          //     font: {
-          //       size: 10
-          //     }
-          //   }
-          // }
-        }
-      };
-    }
-    
     // Add ROP benchmark if enabled
     if (showBenchmarks) {
-      console.log('Adding combo chart ROP benchmark at:', benchmarks.rop);
-      
       if (!options.plugins.annotation.annotations) {
         options.plugins.annotation.annotations = {};
       }
@@ -775,12 +816,12 @@ function ChartPanel({ chartData }) {
         type: 'line',
         yMin: benchmarks.rop,
         yMax: benchmarks.rop,
-        borderColor: 'rgb(255, 0, 0)',        // SOLID RED
-        borderWidth: 3,                       // THICKER line
-        borderDash: [],                       // EXPLICITLY empty array for solid line
-        drawTime: 'afterDatasetsDraw',        // Draw after datasets
-        z: 999,                               // Very high z-index
-        yScaleID: 'y',                        // Applies to ROP y-axis
+        borderColor: 'rgb(255, 0, 0)',
+        borderWidth: 3,
+        borderDash: [],
+        drawTime: 'afterDatasetsDraw',
+        z: 999,
+        yScaleID: 'y',
         label: {
           display: true,
           content: `ROP Benchmark: ${benchmarks.rop} ft/hr`,
@@ -1052,6 +1093,22 @@ function ChartPanel({ chartData }) {
           },
           null // No second chart for combo view
         ];
+      // case 'slide':
+      //   return [
+      //     {
+      //       data: {
+      //         slideDrillingPercent: chartData.slideDrillingPercent,
+      //         rop: chartData.rop
+      //       },
+      //       options: getSlideRopComboChartOptions(),  // You'd need to create this function
+      //       title: 'Slide Drilling (%) with ROP',
+      //       type: 'combo',
+      //       limits: {
+      //         rop: operationalLimits.rop
+      //       }
+      //     },
+      //     null // No second chart for combo view
+      //   ];
       case 'pre-connection-control':
         return [
           {
@@ -1106,37 +1163,90 @@ function ChartPanel({ chartData }) {
     if (chartInfo.type === 'combined') {
       return createCombinedChartConfig();
     } else if (chartInfo.type === 'combo') {
-      return {
-        labels: chartInfo.data.controlPercent.labels || [],
-        datasets: [
-          // ROP Line (dataset index 0)
-          {
-            type: 'line',
-            label: 'Rate of Penetration (ft/hr)',
-            data: chartInfo.data.rop.data || [],
-            borderColor: '#1a73e8',
-            backgroundColor: 'rgba(26, 115, 232, 0.1)',
-            borderWidth: 2,
-            pointRadius: 2,
-            pointHoverRadius: 5,
-            fill: false,
-            tension: 0.2,
-            yAxisID: 'y', // Use the right y-axis (ROP)
-            order: 2, // Lower order means it's drawn later (on top)
-          },
-          // Control Drilling Bars (dataset index 1)
-          {
-            type: 'bar',
-            label: 'Control Drilling (%)',
-            data: chartInfo.data.controlPercent.data || [],
-            backgroundColor: getBarColors(chartInfo.data.controlPercent),
-            borderColor: 'rgba(0,0,0,0.1)',
-            borderWidth: 1,
-            yAxisID: 'y1', // Use the left y-axis (Control %)
-            order: 1, // Higher order means it's drawn first (behind)
-          }
-        ]
-      };
+      if (chartInfo.data.slideDrillingPercent) {
+        // Existing slide drilling code...
+        return {
+          labels: chartInfo.data.controlPercent.labels || [],
+          datasets: [
+            // ROP Line (dataset index 0)
+            {
+              type: 'line',
+              label: 'Rate of Penetration (ft/hr)',
+              data: chartInfo.data.rop.data || [],
+              borderColor: '#1a73e8',
+              backgroundColor: 'rgba(26, 115, 232, 0.1)',
+              borderWidth: 2,
+              pointRadius: 2,
+              pointHoverRadius: 5,
+              fill: false,
+              tension: 0.2,
+              yAxisID: 'y', // Use the right y-axis (ROP)
+              order: 2, // Lower order means it's drawn later (on top)
+            },
+            // Slide Drilling Bars (dataset index 1)
+            {
+              type: 'bar',
+              label: 'Slide Drilling (%)',
+              data: chartInfo.data.slideDrillingPercent.data || [],
+              backgroundColor: 'rgba(255, 99, 132, 0.7)',  // Pink/red for slide
+              borderColor: 'rgba(0,0,0,0.1)',
+              borderWidth: 1,
+              yAxisID: 'y1', // Use the left y-axis (Slide %)
+              order: 1,
+            }
+          ]
+        };
+      } else {
+        // Modified code for control drilling to show both control and manual bars
+        // First, calculate manual drilling percentage (100% - control%)
+        const controlData = chartInfo.data.controlPercent.data || [];
+        const manualData = controlData.map(value => value ? (100 - value) : 0);
+        
+        return {
+          labels: chartInfo.data.controlPercent.labels || [],
+          datasets: [
+            // ROP Line (dataset index 0)
+            {
+              type: 'line',
+              label: 'Rate of Penetration (ft/hr)',
+              data: chartInfo.data.rop.data || [],
+              borderColor: '#1a73e8',
+              backgroundColor: 'rgba(26, 115, 232, 0.1)',
+              borderWidth: 2,
+              pointRadius: 2,
+              pointHoverRadius: 5,
+              fill: false,
+              tension: 0.2,
+              yAxisID: 'y', // Use the right y-axis (ROP)
+              order: 3, // Lower order means it's drawn later (on top)
+            },
+            // Control Drilling Bars (dataset index 1)
+            {
+              type: 'bar',
+              label: 'Control Drilling (%)',
+              data: chartInfo.data.controlPercent.data || [],
+              backgroundColor: CHART_COLORS.preConnectionControl, // Green for control
+              borderColor: 'rgba(0,0,0,0.1)',
+              borderWidth: 1,
+              yAxisID: 'y1', // Use the left y-axis (Control %)
+              order: 2,
+              stack: 'stack1' // Stack with manual drilling
+            },
+            // Manual Drilling Bars (dataset index 2)
+            {
+              type: 'bar',
+              label: 'Manual Drilling (%)',
+              data: manualData,
+              backgroundColor: CHART_COLORS.preConnectionManual, // Yellow for manual
+              borderColor: 'rgba(0,0,0,0.1)',
+              borderWidth: 1,
+              yAxisID: 'y1', // Use the left y-axis (Control %)
+              order: 1,
+              stack: 'stack1' // Stack with control drilling
+            }
+          ]
+        };
+      }
     } else if (chartInfo.type === 'pre-connection-control') {
       return createPreConnectionControlChartConfig(chartInfo);
     } else if (chartInfo.type === 'post-connection-control') {
@@ -1176,6 +1286,12 @@ function ChartPanel({ chartData }) {
         onClick={() => setActiveTab('control')}
       >
         Control %
+      {/* </button>
+      <button 
+        className={`chart-tab ${activeTab === 'slide' ? 'active' : ''}`}
+        onClick={() => setActiveTab('slide')}
+      >
+        Slide % */}
       </button>
       <button 
         className={`chart-tab ${activeTab === 'pre-connection-control' ? 'active' : ''}`}
@@ -1188,9 +1304,10 @@ function ChartPanel({ chartData }) {
         onClick={() => setActiveTab('post-connection-control')}
       >
         Post-Conn
+
       </button>
     </div>
-    <div className="limit-toggle">
+    {/* <div className="limit-toggle">
       <label className="limit-toggle-label">
         <input 
           type="checkbox" 
@@ -1202,7 +1319,7 @@ function ChartPanel({ chartData }) {
         />
         Show Operational Limits
       </label>
-    </div>
+    </div> */}
     <div className="benchmark-toggle">
       <label className="benchmark-toggle-label">
         <input 
@@ -1313,15 +1430,19 @@ function ChartPanel({ chartData }) {
 
       <div className="chart-footer">
         <div className="chart-legend">
-          {activeTab === 'control' ? (
+                  {activeTab === 'control' ? (
             <>
               <div className="legend-item">
                 <div className="legend-color" style={{ backgroundColor: '#1a73e8' }}></div>
                 <div className="legend-label">Rate of Penetration (ft/hr)</div>
               </div>
               <div className="legend-item">
-                <div className="legend-color" style={{ backgroundColor: 'rgba(52, 168, 83, 0.7)' }}></div>
+                <div className="legend-color" style={{ backgroundColor: CHART_COLORS.preConnectionControl }}></div>
                 <div className="legend-label">Control Drilling (%)</div>
+              </div>
+              <div className="legend-item">
+                <div className="legend-color" style={{ backgroundColor: CHART_COLORS.preConnectionManual }}></div>
+                <div className="legend-label">Manual Drilling (%)</div>
               </div>
               {showBenchmarks && (
                 <div className="legend-item">
@@ -1330,6 +1451,23 @@ function ChartPanel({ chartData }) {
                 </div>
               )}
             </>
+          ) : activeTab === 'slide' ? (
+              <>
+                <div className="legend-item">
+                  <div className="legend-color" style={{ backgroundColor: '#1a73e8' }}></div>
+                  <div className="legend-label">Rate of Penetration (ft/hr)</div>
+                </div>
+                <div className="legend-item">
+                  <div className="legend-color" style={{ backgroundColor: 'rgba(255, 99, 132, 0.7)' }}></div>
+                  <div className="legend-label">Slide Drilling (%)</div>
+                </div>
+                {showBenchmarks && (
+                  <div className="legend-item">
+                    <div className="legend-color" style={{ backgroundColor: 'rgb(255, 0, 0)' }}></div>
+                    <div className="legend-label">ROP Benchmark ({benchmarks.rop} ft/hr)</div>
+                  </div>
+                )}
+              </>
             ) : activeTab === 'combined' ? (
               <>
                 <div className="legend-item">
@@ -1417,7 +1555,4 @@ function ChartPanel({ chartData }) {
     </div>
   );
 }
-
- 
-
 export default ChartPanel;
